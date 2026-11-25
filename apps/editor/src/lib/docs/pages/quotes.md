@@ -9,7 +9,7 @@ aliases:
     - quotation marks
 ---
 
-In regular JavaScript, single quotes (`'`) and double quotes (`"`), are identical in meaning: defining a string of text. However, in Lovechild, single quotes are for a literal string, whereas double quotes gets automatically converted in a [[pattern]] that uses [[mini notation]].
+In regular JavaScript, single quotes (`'`) and double quotes (`"`), are identical in meaning: defining a string of text. However, in Lovestory, single quotes are for a literal string, whereas double quotes gets automatically converted in a [[pattern]] that uses [[mini notation]].
 
 Some functions, such as [[samples()]] will not work if you try using double quotes, as the [[transpiler]] will assume you are trying to define a pattern.
 

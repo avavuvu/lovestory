@@ -1,11 +1,25 @@
 import { isImage, type Image } from '../image'
-import type { Argument, Capture, Feedback, Media, Operation, Parameter, Text } from '../operation'
-import { definitions } from '../steps'
+import type { Argument, Capture, Feedback, Media, Operation, Parameter, Pixelate, Scalar, Text } from '../operation'
+import { definitions, type Definition } from '../steps'
 import { getChildren, hasFreePrevious } from '../tree'
-import type { Graph, MediaInput, Pass, Target, Uniform } from './graph'
+import type { BufferDescription, Graph, Inspection, MediaInput, Pass, Target, Uniform } from './graph'
 import { generatePass, type Declared, type Resources } from './pass'
 
 const isComponents = (argument: Argument): argument is ReadonlyArray<Parameter> => Array.isArray(argument)
+
+const readDefaultValue = (definition: Definition | undefined, index: number, encode: (value: unknown) => number) => {
+    if (definition?.hasColorChannels) {
+        return index === 3 ? 1 : 0
+    }
+
+    const fallback = definition?.parameters[index]?.default ?? definition?.neutral?.[index]
+
+    if (fallback === undefined) {
+        return 0
+    }
+
+    return typeof fallback === 'number' ? fallback : encode(fallback)
+}
 
 const findScope = (operation: Operation, target: Operation, scope: Feedback | undefined): Feedback | undefined => {
     if (operation === target) {
@@ -55,12 +69,15 @@ const findReadNames = (roots: ReadonlyArray<Operation>, imagesByName: ReadonlyMa
 export const generateGraph = (screen: Image | undefined, previews: ReadonlyArray<Image>, imagesByName: ReadonlyMap<string, Image>): Graph => {
     const uniforms: Array<Uniform> = []
     const uniformNames = new Map<Operation, ReadonlyArray<Declared>>()
-    const buffers = new Map<Feedback | Capture, number>()
+    const buffers = new Map<Feedback | Capture | Pixelate, number>()
+    const bufferDescriptions: Array<BufferDescription> = []
     const namedLoops = new Map<string, Feedback>()
     const media: Array<MediaInput> = []
     const mediaIndexes = new Map<string, number>()
     const textKeys = new Map<Text, string>()
     const passes: Array<Pass> = []
+    let inspection: Inspection | undefined
+    let isCollectingScreen = false
     const roots = [screen, ...previews].filter((image) => image !== undefined).map((image) => image.operation)
 
     const loopInputs = new Map(Array.from(findReadNames(roots, imagesByName)).flatMap((name): Array<[Operation, string]> => {
@@ -84,6 +101,12 @@ export const generateGraph = (screen: Image | undefined, previews: ReadonlyArray
         passes.push(generatePass(root, owner, target, resources))
     }
 
+    const declareScalarUniform = (value: Scalar, defaultValue: number) => {
+        const index = uniforms.length
+        uniforms.push({ name: `parameter${index}`, value, defaultValue, encode: Number })
+        return index
+    }
+
     const resources: Resources = {
         declareUniforms: (step) => {
             const existing = uniformNames.get(step)
@@ -105,9 +128,10 @@ export const generateGraph = (screen: Image | undefined, previews: ReadonlyArray
                 }
 
                 const name = `parameter${uniforms.length}`
+                const defaultValue = readDefaultValue(definition, index, encode)
                 const channel = definition?.hasColorChannels ? { colorChannel: index } : {}
                 const onset = definition?.isOnset ? { isOnset: true } : {}
-                uniforms.push({ name, value, encode, ...channel, ...onset })
+                uniforms.push({ name, value, defaultValue, encode, ...channel, ...onset })
                 return name
             }
 
@@ -138,6 +162,7 @@ export const generateGraph = (screen: Image | undefined, previews: ReadonlyArray
 
             const index = buffers.size
             buffers.set(feedback, index)
+            bufferDescriptions.push({})
             addPass(feedback.input, feedback, { kind: 'buffer', index })
             return index
         },
@@ -150,7 +175,32 @@ export const generateGraph = (screen: Image | undefined, previews: ReadonlyArray
 
             const index = buffers.size
             buffers.set(capture, index)
+            bufferDescriptions.push({})
             addPass(capture, scope, { kind: 'buffer', index })
+            return index
+        },
+        getPixelateBuffer: (pixelate, scope) => {
+            const existing = buffers.get(pixelate)
+
+            if (existing !== undefined) {
+                if (isCollectingScreen && pixelate.isInspected) {
+                    inspection = { buffer: existing, hasAlpha: pixelate.hasAlpha }
+                }
+
+                return existing
+            }
+
+            const index = buffers.size
+            const widthUniform = declareScalarUniform(pixelate.width, 8)
+            const heightUniform = declareScalarUniform(pixelate.height, 8)
+            buffers.set(pixelate, index)
+            bufferDescriptions.push({ size: { widthUniform, heightUniform }, isNearest: true })
+
+            if (isCollectingScreen && pixelate.isInspected) {
+                inspection = { buffer: index, hasAlpha: pixelate.hasAlpha }
+            }
+
+            addPass(pixelate.input, scope, { kind: 'buffer', index })
             return index
         },
         getNamedLoop: (name) => {
@@ -193,12 +243,14 @@ export const generateGraph = (screen: Image | undefined, previews: ReadonlyArray
     }
 
     if (screen) {
+        isCollectingScreen = true
         addPass(screen.operation, undefined, { kind: 'screen' })
+        isCollectingScreen = false
     }
 
     for (const [index, preview] of previews.entries()) {
         addPass(preview.operation, getPreviewScope(preview.operation), { kind: 'preview', index })
     }
 
-    return { uniforms, passes, bufferCount: buffers.size, media }
+    return { uniforms, passes, bufferCount: buffers.size, buffers: bufferDescriptions, inspection, media }
 }

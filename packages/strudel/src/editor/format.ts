@@ -24,11 +24,9 @@ interface Parsed extends Syntax {
 
 const lineWidth = 100
 
-const indentation = '  '
-
 const isMultiline = (text: string) => text.includes('\n')
 
-const pad = (depth: number) => indentation.repeat(depth)
+const pad = (depth: number) => '  '.repeat(depth)
 
 const readFirstLine = (text: string) => text.split('\n')[0]
 
@@ -45,12 +43,6 @@ const readCode = (code: string): Parsed | undefined => {
     const parsed = parseCode(source, { preserveParens: true })
     return parsed && { ...parsed, source }
 }
-
-const describeCode = ({ program, tokens, comments, source }: Parsed) => JSON.stringify([
-    program.body.length,
-    tokens.filter((token) => token.type !== tokTypes.semi && token.type !== tokTypes.eof).map((token) => token.type === tokTypes.num ? String(Number(source.slice(token.start, token.end))) : source.slice(token.start, token.end)),
-    comments.map((comment) => comment.value),
-])
 
 const layOut = (code: string, { program, tokens, comments, source }: Parsed) => {
     const zeroPositions = new Set(tokens.filter((token) => token.type === tokTypes.num && source[token.start] === '.').map((token) => token.start))
@@ -206,26 +198,7 @@ const layOut = (code: string, { program, tokens, comments, source }: Parsed) => 
         return undefined
     }
 
-    const keepsComments = (statement: AnyNode, text: string) => {
-        let from = 0
-
-        for (const comment of findComments(statement.start, statement.end)) {
-            const found = text.indexOf(readComment(comment), from)
-
-            if (found === -1) {
-                return false
-            }
-
-            from = found + comment.end - comment.start
-        }
-
-        return true
-    }
-
-    const formatStatement = (statement: AnyNode) => {
-        const formatted = formatParts(statement)
-        return formatted !== undefined && keepsComments(statement, formatted) ? formatted : readSource(statement.start, statement.end).replace(/;$/, '')
-    }
+    const formatStatement = (statement: AnyNode) => formatParts(statement) ?? readSource(statement.start, statement.end).replace(/;$/, '')
 
     const isTopLevel = (comment: Comment) => !program.body.some((statement) => comment.start >= statement.start && comment.end <= statement.end)
 
@@ -269,7 +242,5 @@ export const formatCode = (code: string): string | undefined => {
         return undefined
     }
 
-    const formatted = layOut(code, parsed)
-    const check = readCode(formatted)
-    return check && describeCode(check) === describeCode(parsed) ? formatted : undefined
+    return layOut(code, parsed)
 }

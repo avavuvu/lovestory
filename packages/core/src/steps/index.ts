@@ -3,13 +3,11 @@ import { colors } from './colors'
 import { combines } from './combines'
 import { coordinates } from './coordinates'
 import type { Definition } from './definition'
-import { checkSignatures } from './signatures'
 import { sources } from './sources'
-import { splits } from './splits'
 
 export type { Definition, Shape } from './definition'
 
-export const definitions: Record<OperationName, Definition> = { ...sources, ...coordinates, ...colors, ...combines, ...splits }
+export const definitions: Record<OperationName, Definition> = { ...sources, ...coordinates, ...colors, ...combines }
 
 const getNames = <Name extends string>(group: Record<Name, Definition>) => Object.keys(group) as Array<Name>
 
@@ -20,14 +18,6 @@ export const coordinateNames = getNames(coordinates)
 export const colorNames = getNames(colors)
 
 export const combineNames = getNames(combines)
-
-export const splitNames = getNames(splits)
-
-checkSignatures('source', sources)
-checkSignatures('coordinate', coordinates)
-checkSignatures('color', colors)
-checkSignatures('combine', combines)
-checkSignatures('split', splits)
 
 export const getFunctionName = (name: OperationName) => definitions[name].functionName ?? name
 

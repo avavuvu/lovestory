@@ -91,7 +91,7 @@ vec4 colorama(vec4 color, float amount) {
         neutral: [0, 0, 0],
         glsl: `
 vec4 shift(vec4 color, vec3 amount) {
-    return vec4(color.rgb + fract(amount), color.a);
+    return vec4(fract(color.rgb + amount), color.a);
 }`,
     },
     grey: {
@@ -109,8 +109,9 @@ vec4 grey(vec4 color) {
         glsl: `
 vec4 posterize(vec4 color, float levels) {
     const float gamma = 0.6;
-    vec3 adjusted = floor(pow(color.rgb, vec3(gamma)) * levels) / levels;
-    return vec4(pow(adjusted, vec3(1.0 / gamma)), color.a);
+    float safeLevels = max(abs(levels), 0.0001);
+    vec3 adjusted = floor(pow(max(color.rgb, 0.0), vec3(gamma)) * safeLevels) / safeLevels;
+    return vec4(pow(max(adjusted, 0.0), vec3(1.0 / gamma)), color.a);
 }`,
     },
     abs: {
@@ -137,17 +138,20 @@ vec4 fractStep(vec4 color) {
         functionName: 'smoothstepStep',
         glsl: `
 vec4 smoothstepStep(vec4 color, float start, float end) {
-    return vec4(smoothstep(start, end, color.rgb), color.a);
+    float low = min(start, end);
+    float high = max(start, end);
+    vec3 result = high - low < 0.000001 ? step(start, color.rgb) : smoothstep(low, high, color.rgb);
+    return vec4(start > end ? 1.0 - result : result, color.a);
 }`,
     },
     thresh: {
-        parameters: [{ name: 'threshold', default: 0.5 }],
-        shapes: ['scalar'],
+        parameters: [{ name: 'threshold', default: 0.5 }, { name: 'tolerance', default: 0 }],
+        shapes: ['scalar', 'scalar'],
         helpers: ['luminance'],
         glsl: `
-vec4 thresh(vec4 color, float threshold) {
-    const float tolerance = 0.04;
-    return vec4(vec3(smoothstep(threshold - tolerance, threshold + tolerance, luminance(color))), color.a);
+vec4 thresh(vec4 color, float threshold, float tolerance) {
+    float edge = max(tolerance, 0.0000001);
+    return vec4(vec3(smoothstep(threshold - edge, threshold + edge, luminance(color))), color.a);
 }`,
     },
     opacity: {
@@ -166,7 +170,7 @@ vec4 opacity(vec4 color, float amount) {
 vec4 luma(vec4 color, float threshold) {
     const float tolerance = 0.1;
     float amount = smoothstep(threshold - tolerance, threshold + tolerance, luminance(color));
-    return vec4(color.rgb, amount);
+    return vec4(color.rgb, color.a * amount);
 }`,
     },
 } satisfies Record<string, Definition>

@@ -18,7 +18,7 @@
 
 <Backdrop />
 <div>
-    <Examples current={data.name} />
+    <Examples current={data.name} onOpen={() => player.openInEditor(data.code)} />
 </div>
 
 <style>

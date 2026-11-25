@@ -1,9 +1,3 @@
-// licensed with CC BY-NC-SA 4.0 https://creativecommons.org/licenses/by-nc-sa/4.0/
-// "the-wall"
-// Alexandre Rangel
-// www.alexandrerangel.art.br/hydra.html
-//
-// ported from the hydra original at https://hydra.ojack.xyz/?sketch_id=alexandre_0
 setcpm(0.5)
 
 const bars = (frequency, phase) => osc(frequency, phase).thresh(0.4)
@@ -33,3 +27,10 @@ $: bars(7.64, isaw.fast(1.53))
   )
   .scale(2.122)
   .stretch()
+
+// licensed with CC BY-NC-SA 4.0 https://creativecommons.org/licenses/by-nc-sa/4.0/
+// "the-wall"
+// Alexandre Rangel
+// www.alexandrerangel.art.br/hydra.html
+//
+// ported from the hydra original at https://hydra.ojack.xyz/?sketch_id=alexandre_0

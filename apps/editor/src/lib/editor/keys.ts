@@ -1,5 +1,7 @@
+export const isShortcutModifier = (event: KeyboardEvent) => !event.shiftKey && (event.altKey || event.ctrlKey || event.metaKey)
+
 export const createKeyHandler = (onEvaluate: () => void, onStop: () => void) => (event: KeyboardEvent) => {
-    if (!event.altKey) {
+    if (!isShortcutModifier(event)) {
         return false
     }
 

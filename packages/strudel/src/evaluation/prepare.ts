@@ -18,8 +18,6 @@ type Edits = Map<number, string>
 
 const lineBreak = /[\n\r\u2028\u2029]/
 
-const nameMethod = 'track'
-
 const readOpening = (node: AnyNode): Opening | undefined => {
     if (node.type === 'CallExpression' && !node.optional) {
         return { after: node.callee.end, type: tokTypes.parenL }
@@ -71,7 +69,7 @@ const bindNames = (program: Program, edits: Edits) => {
 }
 
 const readNamedLabel = (node: AnyNode) => {
-    if (node.type !== 'CallExpression' || node.callee.type !== 'MemberExpression' || node.callee.property.type !== 'Identifier' || node.callee.property.name !== nameMethod) {
+    if (node.type !== 'CallExpression' || node.callee.type !== 'MemberExpression' || node.callee.property.type !== 'Identifier' || node.callee.property.name !== 'track') {
         return undefined
     }
 

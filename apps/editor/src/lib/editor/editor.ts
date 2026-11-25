@@ -2,7 +2,7 @@ import { closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete'
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands'
 import { javascript, javascriptLanguage } from '@codemirror/lang-javascript'
 import { bracketMatching } from '@codemirror/language'
-import { EditorState, StateEffect, StateField } from '@codemirror/state'
+import { EditorState, StateEffect, StateField, Transaction } from '@codemirror/state'
 import { crosshairCursor, Decoration, drawSelection, dropCursor, EditorView, highlightSpecialChars, keymap, lineNumbers, rectangularSelection, ViewPlugin, WidgetType, type DecorationSet } from '@codemirror/view'
 import type { EvaluationResult } from '@lovechild/strudel'
 import { getWidgetID, previewNames } from '@lovechild/strudel/editor'
@@ -32,7 +32,7 @@ export interface EditorOptions {
 
 export interface Editor {
     evaluate: () => void
-    setCode: (code: string) => void
+    setCode: (code: string, isUndoable?: boolean) => void
     showEvaluation: (result: EvaluationResult) => void
     highlight: (time: number, haps: ReadonlyArray<Hap>) => void
     showWarnings: (messages: ReadonlyArray<LineMessage>) => void
@@ -121,7 +121,6 @@ export const createEditor = ({ parent, onEvaluate, onStop, shouldFormat = () => 
         parent,
         state: EditorState.create({
             extensions: [
-                lineNumbers(),
                 highlightSpecialChars(),
                 history(),
                 drawSelection({ cursorBlinkRate: 0 }),
@@ -131,7 +130,6 @@ export const createEditor = ({ parent, onEvaluate, onStop, shouldFormat = () => 
                 closeBrackets(),
                 javascript(),
                 javascriptLanguage.data.of({ closeBrackets: { brackets: ['(', '[', '{', "'", '"', '<'] } }),
-                EditorView.domEventHandlers({ keydown: createKeyHandler(() => evaluate(view), onStop) }),
                 keymap.of([
                     indentWithTab,
                     ...closeBracketsKeymap,
@@ -144,21 +142,25 @@ export const createEditor = ({ parent, onEvaluate, onStop, shouldFormat = () => 
                 remeasureOnResize,
                 sliderPlugin,
                 blockMarkers,
-                createToggles(evaluate),
                 bracketColors,
                 tokenColors,
                 warningLines.extension,
                 errorLines.extension,
                 bracketMatching(),
                 theme,
-                ...(isReadOnly ? [EditorState.readOnly.of(true), EditorView.editable.of(false)] : []),
+                ...(isReadOnly
+                    ? [lineNumbers(), EditorState.readOnly.of(true), EditorView.editable.of(false)]
+                    : [createToggles(evaluate), EditorView.domEventHandlers({ keydown: createKeyHandler(() => evaluate(view), onStop) })]),
             ],
         }),
     })
 
     return {
         evaluate: () => evaluate(view),
-        setCode: (code) => view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: code } }),
+        setCode: (code, isUndoable = false) => view.dispatch({
+            changes: { from: 0, to: view.state.doc.length, insert: code },
+            annotations: isUndoable ? [] : [Transaction.addToHistory.of(false)],
+        }),
         showEvaluation: ({ miniLocations, widgets, imagePreviews, patternPreviews: shownPatterns }) => {
             for (const { id, element } of imagePreviews) {
                 setWidget(id, element)

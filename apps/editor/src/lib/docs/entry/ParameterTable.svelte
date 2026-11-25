@@ -17,6 +17,15 @@
         {/if}
     </colgroup>
     {#if entry.parameters.length > 0}
+        <thead>
+            <tr>
+                <th scope="col">parameter</th>
+                <th scope="col">type</th>
+                {#if hasDefaults}
+                    <th scope="col">default</th>
+                {/if}
+            </tr>
+        </thead>
         <tbody>
             {#each entry.parameters as parameter, index (index)}
                 <tr>
@@ -60,12 +69,19 @@
         width: 15%;
     }
 
+    th,
     td {
         padding: 0 var(--gap);
         border-block: 1px solid var(--color-border);
         line-height: var(--row-height);
         vertical-align: top;
         overflow-wrap: anywhere;
+    }
+
+    th {
+        text-align: left;
+        font-weight: normal;
+        color: var(--color-muted);
     }
 
     .description {

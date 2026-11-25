@@ -1,6 +1,6 @@
 import type { Graph } from '@lovechild/core'
 import { createRenderer, type CompiledGraph, type MediaElement } from '@lovechild/webgl'
-import { Cyclist, Hap, setClockTime, setTime, silence, type Pattern } from '@strudel/core'
+import { Cyclist, Hap, setClockTime, setCpsFunc, setTime, silence, type Pattern } from '@strudel/core'
 import { cleanupDraw } from '@strudel/draw'
 import type { Widget } from '@strudel/transpiler'
 import * as webaudio from '@strudel/webaudio'
@@ -10,6 +10,7 @@ import { createValueReader, type ValueReader } from '../playback/values'
 import type { Location, Warning, WarningList } from '../evaluation/warnings'
 import { createAudio } from './audio'
 import { createErrorReporter } from './errors'
+import { createPixelOverlay } from './inspect'
 import { createMediaCache } from './media'
 import { createImagePreviews, type PreviewElement } from './image-previews'
 import { createTextLayer, type TextLayer } from './text'
@@ -37,11 +38,12 @@ export interface RuntimeOptions {
     onFrame: (time: number, haps: ReadonlyArray<Hap>) => void
     onWarning?: (warning: Warning) => void
     onPlaybackError?: (error: Error, locations: ReadonlyArray<Location>) => void
+    onBlockedSound?: () => void
     scope?: Record<string, unknown>
 }
 
 export interface Runtime {
-    evaluate: (code: string) => Promise<EvaluationResult>
+    evaluate: (code: string) => Promise<EvaluationResult | undefined>
     unmute: () => Promise<void>
     mute: () => Promise<void>
     stop: () => void
@@ -53,17 +55,21 @@ const fillWhole = (hap: Hap) => hap.whole === undefined ? new Hap(hap.part, hap.
 
 export const createRuntime = (canvas: HTMLCanvasElement, options: RuntimeOptions): Runtime => {
     const renderer = createRenderer(canvas)
+    const overlay = createPixelOverlay(canvas)
     const errors = createErrorReporter(options.onPlaybackError)
-    const audio = createAudio(errors)
+    const audio = createAudio(errors, options.onBlockedSound)
     const scheduler = new Cyclist({ getTime: audio.getTime, onSchedule: audio.play, onError: errors.report })
     const previews = createImagePreviews()
     const media = createMediaCache(renderer, errors)
     let sound: Pattern = silence
     let visual: Visual | undefined
     let frame = 0
+    let evaluationId = 0
+    let isDestroyed = false
 
     setTime(() => scheduler.now())
     setClockTime(audio.getTime)
+    setCpsFunc(() => scheduler.cps)
 
     const getVisualTime = () => {
         const delay = scheduler.latency - scheduler.clock.duration + audio.getOutputLatency()
@@ -86,6 +92,10 @@ export const createRuntime = (canvas: HTMLCanvasElement, options: RuntimeOptions
     const readHaps = (read: () => Array<Hap>) => errors.attempt(read, []).map(fillWhole)
 
     const renderFrame = () => {
+        if (isDestroyed) {
+            return
+        }
+
         frame = requestAnimationFrame(renderFrame)
 
         if (!scheduler.started) {
@@ -103,7 +113,8 @@ export const createRuntime = (canvas: HTMLCanvasElement, options: RuntimeOptions
                 haps.push(...readHaps(() => text.update(time, canvas.width, canvas.height)))
             }
 
-            renderer.draw(shown.graph, shown.reader.values, time, scheduler.cps, shown.previews, shown.media)
+            const inspection = errors.attempt(() => renderer.draw(shown.graph, shown.reader.values, time, scheduler.cps, shown.previews, shown.media), undefined)
+            overlay.draw(inspection)
         }
 
         options.onFrame(time, haps)
@@ -113,23 +124,37 @@ export const createRuntime = (canvas: HTMLCanvasElement, options: RuntimeOptions
 
     return {
         evaluate: async (code) => {
-            cleanupDraw(true)
-            errors.clear()
+            const currentId = ++evaluationId
 
             const { evaluation, graph, sound: compiled, warnings } = await compileCode(code, {
-                setCps: (cps) => scheduler.setCps(cps),
+                setCps: (cps) => {
+                    if (!isDestroyed && currentId === evaluationId) {
+                        scheduler.setCps(cps)
+                    }
+                },
                 libraries: [webaudio],
                 scope: options.scope,
                 onWarning: options.onWarning,
             })
 
+            if (isDestroyed || currentId !== evaluationId) {
+                return undefined
+            }
+
+            cleanupDraw(true)
+            errors.clear()
             visual = graph && createVisual(graph, evaluation.imagePreviews, warnings)
             media.releaseUnused(graph?.media ?? [])
             sound = errors.guard(compiled)
             await scheduler.setPattern(sound)
 
+            if (isDestroyed || currentId !== evaluationId) {
+                return undefined
+            }
+
             if (!visual) {
                 renderer.clear()
+                overlay.clear()
             }
 
             if (!scheduler.started) {
@@ -148,16 +173,22 @@ export const createRuntime = (canvas: HTMLCanvasElement, options: RuntimeOptions
         unmute: audio.unmute,
         mute: audio.mute,
         stop: () => {
+            evaluationId += 1
             scheduler.stop()
             cleanupDraw(true)
             options.onFrame(0, [])
         },
         setResolution: (scale) => renderer.setScale(scale),
         destroy: () => {
+            isDestroyed = true
+            evaluationId += 1
             cancelAnimationFrame(frame)
             errors.destroy()
             scheduler.stop()
+            cleanupDraw(true)
+            audio.mute().catch(() => {})
             media.releaseUnused([])
+            overlay.destroy()
             renderer.destroy()
         },
     }

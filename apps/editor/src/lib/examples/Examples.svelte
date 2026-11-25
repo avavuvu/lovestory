@@ -2,7 +2,7 @@
     import { goto } from '$app/navigation'
     import { exampleNames } from './examples'
 
-    let { current }: { current: string } = $props()
+    let { current, onOpen }: { current: string, onOpen?: () => void } = $props()
 
     const open = (name: string) => goto(`/examples/${name}`, { state: { isChosen: true } })
 
@@ -12,14 +12,17 @@
     }
 </script>
 
-<nav>
-    <button type="button" onclick={() => step(-1)}>←</button>
-    <select value={current} onchange={(event) => open(event.currentTarget.value)}>
+<nav aria-label="examples">
+    <button type="button" onclick={() => step(-1)} aria-label="previous example" title="previous example">←</button>
+    <select value={current} aria-label="choose example" onchange={(event) => open(event.currentTarget.value)}>
         {#each exampleNames as name (name)}
             <option value={name}>{name}</option>
         {/each}
     </select>
-    <button type="button" onclick={() => step(1)}>→</button>
+    <button type="button" onclick={() => step(1)} aria-label="next example" title="next example">→</button>
+    {#if onOpen}
+        <button type="button" class="open" onclick={onOpen} title="open this example in the editor">open in editor</button>
+    {/if}
 </nav>
 
 <style>
@@ -40,5 +43,11 @@
 
     button {
         min-width: 32px;
+    }
+
+    .open {
+        padding: 0 var(--gap);
+        border-left: var(--border);
+        white-space: nowrap;
     }
 </style>

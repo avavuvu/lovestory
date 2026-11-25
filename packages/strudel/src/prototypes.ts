@@ -17,6 +17,7 @@ const install = (prototype: object, methods: Record<string, Method>) => {
 
 let isInstalled = false
 
+/// Add Lovechild methods on to Strudel's prototypes.
 export const installPrototypes = () => {
     if (isInstalled) {
         return

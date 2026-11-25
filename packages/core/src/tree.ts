@@ -10,7 +10,8 @@ export const getChildren = (operation: Operation): ReadonlyArray<Operation> => {
             return []
         }
         case 'feedback':
-        case 'swizzle': {
+        case 'swizzle':
+        case 'pixelate': {
             return [operation.input]
         }
         case 'text': {
@@ -20,8 +21,7 @@ export const getChildren = (operation: Operation): ReadonlyArray<Operation> => {
             return getParameterOperations(operation.parameters)
         }
         case 'coordinate':
-        case 'color':
-        case 'split': {
+        case 'color': {
             return [operation.input, ...getParameterOperations(operation.parameters)]
         }
         case 'combine': {
@@ -75,10 +75,10 @@ const canShowImage = (operation: Operation, imagesByName: ReadonlyMap<string, Im
             return operation.options.some((option) => canShowImage(option, imagesByName, visiting))
         }
         case 'coordinate':
-        case 'split':
         case 'swizzle':
         case 'feedback':
-        case 'capture': {
+        case 'capture':
+        case 'pixelate': {
             return canShowImage(operation.input, imagesByName, visiting)
         }
     }

@@ -1,4 +1,3 @@
-// Sound pattern based on "Common West African bell v240624" @by Prince Lucija
 setcpm(134/4)
 
 $: stack(
@@ -33,3 +32,5 @@ $: white().layer(
     .blend(black(), $rim.hits().pow(3))
     .when($bell.hits(0.07), x => x.mask(square))
 )
+
+// Sound pattern based on "Common West African bell v240624" @by Prince Lucija

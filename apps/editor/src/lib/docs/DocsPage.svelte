@@ -12,6 +12,9 @@
 <Backdrop href={isIndex ? undefined : '/explore'} />
 <article class="prose flow">
     {#if isIndex}
+        <h1>
+            <img class="wordmark" src="/logo/wordmark.svg" alt="lovestory" width="195" height="63" />
+        </h1>
         {#if data.markdown}
             <data.markdown />
         {/if}
@@ -39,6 +42,11 @@
         border: var(--border);
         contain: content;
         --prose-size: var(--size-lg);
+    }
+
+    .wordmark {
+        width: min(260px, 100%);
+        height: auto;
     }
 
     article > :global(* + *) {

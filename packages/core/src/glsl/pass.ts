@@ -1,5 +1,5 @@
 import type { Image } from '../image'
-import type { Capture, Feedback, Media, Operation, Select, Step, Text } from '../operation'
+import type { Capture, Feedback, Media, Operation, Pixelate, Select, Step, Text } from '../operation'
 import { createCache } from './cache'
 import type { Pass, Target } from './graph'
 import { definitions, getFunctionName, type Shape } from '../steps'
@@ -16,6 +16,7 @@ export interface Resources {
     getMedia: (operation: Media | Text) => number
     getBuffer: (feedback: Feedback) => number
     getCaptureBuffer: (capture: Capture, scope: Scope) => number
+    getPixelateBuffer: (pixelate: Pixelate, scope: Scope) => number
     getNamedLoop: (name: string) => Feedback
     findNamedLoop: (operation: Operation) => Feedback | undefined
 }
@@ -97,14 +98,6 @@ export const generatePass = (root: Operation, owner: Scope, target: Target, reso
         return result
     }
 
-    const emitSplit = (operation: Extract<Operation, { kind: 'split' }>, coordinate: string, scope: Scope) => {
-        const offset = shader.declareVariable('vec2', callFunction(operation, [], coordinate, scope))
-        const red = emitOperation(operation.input, shader.declareVariable('vec2', `${coordinate} - ${offset}`), scope)
-        const green = emitOperation(operation.input, coordinate, scope)
-        const blue = emitOperation(operation.input, shader.declareVariable('vec2', `${coordinate} + ${offset}`), scope)
-        return shader.declareVariable('vec4', `vec4(${red}.r, ${green}.g, ${blue}.b, ${green}.a)`)
-    }
-
     const emitPrevious = (imageName: string | undefined, coordinate: string, scope: Scope) => {
         const loop = imageName === undefined ? scope : resources.getNamedLoop(imageName)
 
@@ -112,8 +105,7 @@ export const generatePass = (root: Operation, owner: Scope, target: Target, reso
             throw new Error('previous() must be inside a track')
         }
 
-        const frame = shader.sampleBuffer(resources.getBuffer(loop), 'previous', coordinate)
-        return shader.declareVariable('vec4', `vec4(${frame}.rgb * ${frame}.a, 1.0)`)
+        return shader.sampleBuffer(resources.getBuffer(loop), 'previous', coordinate)
     }
 
     const emitFeedback = (operation: Feedback, coordinate: string) => {
@@ -146,6 +138,11 @@ export const generatePass = (root: Operation, owner: Scope, target: Target, reso
         return result
     }
 
+    const emitPixelate = (operation: Pixelate, coordinate: string, scope: Scope) => {
+        const buffer = resources.getPixelateBuffer(operation, scope)
+        return shader.samplePixels(buffer, coordinate)
+    }
+
     const emitStep = (operation: Operation, coordinate: string, scope: Scope): string => {
         switch (operation.kind) {
             case 'source': {
@@ -171,9 +168,6 @@ export const generatePass = (root: Operation, owner: Scope, target: Target, reso
             case 'select': {
                 return emitSelect(operation, coordinate, scope)
             }
-            case 'split': {
-                return emitSplit(operation, coordinate, scope)
-            }
             case 'media': {
                 return shader.sampleMedia(resources.getMedia(operation), coordinate)
             }
@@ -192,6 +186,9 @@ export const generatePass = (root: Operation, owner: Scope, target: Target, reso
             }
             case 'capture': {
                 return emitCapture(operation, coordinate, scope)
+            }
+            case 'pixelate': {
+                return emitPixelate(operation, coordinate, scope)
             }
         }
     }

@@ -15,6 +15,12 @@ interface TextValues {
 
 const defaults: TextValues = { content: '', font: 'sans-serif', outline: 0, wrap: 1 }
 
+const emojiFont = 'Twemoji'
+
+const emojiSampleGlyph = '♥'
+
+const genericFonts = new Set(['serif', 'sans-serif', 'monospace', 'cursive', 'fantasy', 'system-ui', 'ui-serif', 'ui-sans-serif', 'ui-monospace', 'ui-rounded'])
+
 const glyphColor = '#ffffff'
 
 const measureSize = 100
@@ -31,6 +37,18 @@ const toNumber = (value: unknown, fallback: number) => {
     const number = Number(value)
     return value !== undefined && Number.isFinite(number) ? number : fallback
 }
+
+const formatPrimaryFont = (font: string) => {
+    const trimmed = font.trim()
+
+    if (trimmed === '' || genericFonts.has(trimmed.toLowerCase()) || trimmed.includes(',') || trimmed.includes('"') || trimmed.includes("'")) {
+        return trimmed || defaults.font
+    }
+
+    return JSON.stringify(trimmed)
+}
+
+const formatFontFamily = (font: string) => `${JSON.stringify(emojiFont)}, ${formatPrimaryFont(font)}`
 
 const wrapParagraph = (context: CanvasRenderingContext2D, paragraph: string, limit: number) => {
     const lines: Array<string> = []
@@ -58,26 +76,34 @@ const getLines = (context: CanvasRenderingContext2D, values: TextValues) => {
     }
 
     const widest = Math.max(...paragraphs.map((paragraph) => context.measureText(paragraph).width))
-    return paragraphs.flatMap((paragraph) => wrapParagraph(context, paragraph, widest * values.wrap))
+    return paragraphs.flatMap((paragraph) => wrapParagraph(context, paragraph, widest * Math.max(0.01, values.wrap)))
 }
 
 const drawText = (context: CanvasRenderingContext2D, values: TextValues, width: number, height: number) => {
-    context.canvas.width = width
-    context.canvas.height = height * 2
-    context.font = `${measureSize}px ${values.font}`
+    const targetHeight = height * 2
+
+    if (context.canvas.width !== width || context.canvas.height !== targetHeight) {
+        context.canvas.width = width
+        context.canvas.height = targetHeight
+    } else {
+        context.clearRect(0, 0, width, targetHeight)
+    }
+
+    const family = formatFontFamily(values.font)
+    context.font = `${measureSize}px ${family}`
 
     const lines = getLines(context, values)
-    const outline = values.outline * outlineScale
+    const outline = Math.max(0, values.outline) * outlineScale
     const textWidth = Math.max(...lines.map((line) => context.measureText(line).width)) + outline * measureSize * 2
     const textHeight = lines.length * lineHeight * measureSize + outline * measureSize * 2
 
-    if (lines.every((line) => line === '')) {
+    if (lines.every((line) => line === '') || textWidth <= 0 || textHeight <= 0) {
         return
     }
 
     const size = measureSize * Math.min(width * (1 - 2 * margin) / textWidth, height * (1 - 2 * margin) / textHeight)
 
-    context.font = `${size}px ${values.font}`
+    context.font = `${size}px ${family}`
     context.textAlign = 'center'
     context.textBaseline = 'middle'
     context.lineJoin = 'round'
@@ -97,6 +123,7 @@ const drawText = (context: CanvasRenderingContext2D, values: TextValues, width: 
 
 export const createTextLayer = (canvas: HTMLCanvasElement, settings: TextSettings): TextLayer => {
     const context = canvas.getContext('2d')
+    const attemptedFonts = new Set<string>()
     let current = defaults
     let drawn = ''
 
@@ -104,12 +131,28 @@ export const createTextLayer = (canvas: HTMLCanvasElement, settings: TextSetting
         drawn = ''
     }
 
-    const loadFont = (font: string) => {
-        const sample = `${measureSize}px ${font}`
+    const ensureFont = (family: string, text?: string) => {
+        const key = `${family}\0${text ?? ''}`
 
-        if (!document.fonts.check(sample)) {
-            document.fonts.load(sample).then(redraw, redraw)
+        if (attemptedFonts.has(key)) {
+            return
         }
+
+        attemptedFonts.add(key)
+        const sample = `${measureSize}px ${family}`
+
+        if (!document.fonts.check(sample, text)) {
+            document.fonts.load(sample, text).then((faces) => {
+                if (faces.length > 0) {
+                    redraw()
+                }
+            }, () => {})
+        }
+    }
+
+    const loadFont = (font: string) => {
+        ensureFont(JSON.stringify(emojiFont), emojiSampleGlyph)
+        ensureFont(formatPrimaryFont(font))
     }
 
     return {

@@ -55,6 +55,13 @@ export const createShader = () => {
         return declareVariable('vec4', `sampleFeedback(${name}, bufferResolution, ${coordinate})`)
     }
 
+    const samplePixels = (buffer: number, coordinate: string) => {
+        const name = `buffer${buffer}Current`
+        inputs.set(name, { name, buffer, frame: 'current' })
+        usedHelpers.add('sampleTexture')
+        return declareVariable('vec4', `sampleTexture(${name}, areaSize, ${coordinate})`)
+    }
+
     const sampleText = (index: number, coordinate: string) => {
         media.add(index)
         usedHelpers.add('sampleText')
@@ -71,6 +78,7 @@ export const createShader = () => {
 
     const buildPass = (output: string, target: Target): Pass => {
         const mediaIndexes = Array.from(media)
+        const sanitized = `mix(mix(${output}, vec4(0.0), isnan(${output})), vec4(0.0), isinf(${output}))`
 
         const sections = [
             [
@@ -85,7 +93,7 @@ export const createShader = () => {
                 'uniform float previousTime;',
                 'uniform float cps;',
                 'uniform float isFirstFrame;',
-                ...(inputs.size > 0 ? ['uniform vec2 bufferResolution;'] : []),
+                'uniform vec2 bufferResolution;',
                 ...Array.from(uniforms, (name) => `uniform float ${name};`),
                 ...Array.from(inputs.keys(), (name) => `uniform sampler2D ${name};`),
                 ...mediaIndexes.flatMap((index) => [`uniform sampler2D media${index};`, `uniform vec2 media${index}Size;`]),
@@ -97,7 +105,8 @@ export const createShader = () => {
                 'void main() {',
                 '    vec2 ' + baseCoordinate + ' = (gl_FragCoord.xy - origin - 0.5 * areaSize) / min(areaSize.x, areaSize.y) + 0.5;',
                 ...statements.map((statement) => `    ${statement}`),
-                '    fragmentColor = ' + (target.kind === 'buffer' ? output : `vec4(${output}.rgb * ${output}.a, 1.0)`) + ';',
+                '    vec4 safeOutput = ' + sanitized + ';',
+                '    fragmentColor = ' + (target.kind === 'buffer' ? 'clamp(safeOutput, -65504.0, 65504.0)' : 'vec4(safeOutput.rgb * safeOutput.a, 1.0)') + ';',
                 '}',
             ],
         ]
@@ -107,5 +116,5 @@ export const createShader = () => {
         return { source, target, inputs: Array.from(inputs.values()), media: mediaIndexes }
     }
 
-    return { addStatement, declareVariable, declareResult, useUniform, useHelper, useFunction, sampleBuffer, sampleMedia, sampleText, buildPass }
+    return { addStatement, declareVariable, declareResult, useUniform, useHelper, useFunction, sampleBuffer, samplePixels, sampleMedia, sampleText, buildPass }
 }

@@ -10,6 +10,8 @@ export interface MediaTexture {
 
 const frameCounts = new WeakMap<HTMLVideoElement, number>()
 
+const frameHandles = new WeakMap<HTMLVideoElement, number>()
+
 const canvasVersions = new WeakMap<HTMLCanvasElement, number>()
 
 export const markCanvasChanged = (canvas: HTMLCanvasElement) => {
@@ -22,24 +24,43 @@ const watchFrames = (element: HTMLVideoElement) => {
     }
 
     const countFrame = () => {
+        if (!frameCounts.has(element)) {
+            return
+        }
+
         frameCounts.set(element, (frameCounts.get(element) ?? 0) + 1)
-        element.requestVideoFrameCallback(countFrame)
+        frameHandles.set(element, element.requestVideoFrameCallback(countFrame))
     }
 
     frameCounts.set(element, 0)
-    element.requestVideoFrameCallback(countFrame)
+    frameHandles.set(element, element.requestVideoFrameCallback(countFrame))
+}
+
+export const stopWatchingFrames = (element: MediaElement) => {
+    if (!(element instanceof HTMLVideoElement)) {
+        return
+    }
+
+    const handle = frameHandles.get(element)
+
+    if (handle !== undefined && 'cancelVideoFrameCallback' in element) {
+        element.cancelVideoFrameCallback(handle)
+    }
+
+    frameHandles.delete(element)
+    frameCounts.delete(element)
 }
 
 const isMediaReady = (element: MediaElement) => {
     if (element instanceof HTMLVideoElement) {
-        return element.readyState >= element.HAVE_CURRENT_DATA && element.videoWidth > 0
+        return element.readyState >= element.HAVE_CURRENT_DATA && element.videoWidth > 0 && element.videoHeight > 0
     }
 
     if (element instanceof HTMLCanvasElement) {
         return element.width > 0 && element.height > 0
     }
 
-    return element.complete && element.naturalWidth > 0
+    return element.complete && element.naturalWidth > 0 && element.naturalHeight > 0
 }
 
 const getMediaSize = (element: MediaElement) => {
@@ -68,7 +89,7 @@ const getFrame = (element: MediaElement, media: MediaTexture) => {
 }
 
 export const createImageTexture = (gl: WebGL2RenderingContext) => {
-    const texture = gl.createTexture()
+    const texture = gl.createTexture()!
 
     gl.bindTexture(gl.TEXTURE_2D, texture)
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
@@ -117,8 +138,13 @@ export const updateMediaTexture = (gl: WebGL2RenderingContext, media: MediaTextu
 
     gl.bindTexture(gl.TEXTURE_2D, media.textures[index])
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true)
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, element)
-    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false)
+
+    try {
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, element)
+    } finally {
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false)
+    }
+
     media.index = index
     media.width = width
     media.height = height

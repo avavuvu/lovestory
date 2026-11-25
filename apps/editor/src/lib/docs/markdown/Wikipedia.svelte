@@ -7,5 +7,5 @@
 </script>
 
 <Hatnote>
-    Wikipedia has a page on <a {href}>{page}</a>.
+    Wikipedia has a page on <a {href} target="_blank" rel="noreferrer">{page}</a>.
 </Hatnote>

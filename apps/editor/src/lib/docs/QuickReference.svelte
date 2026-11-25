@@ -41,10 +41,12 @@
         }).sort(compareGroups)
     }
 
-    const isMatch = (entry: Entry) => [entry.label, ...entry.synonyms].some((name) => name.includes(search.trim()))
+    const query = $derived(search.trim().toLowerCase())
+    const isSearching = $derived(query !== '')
+    const isMatch = (entry: Entry) => [entry.label, ...entry.synonyms].some((name) => name.toLowerCase().includes(query))
 
     const groups = $derived(createGroups(entries.filter(isMatch)))
-    const shownEntries = $derived(groups.filter((group) => openCategories[group.key]).flatMap((group) => group.entries))
+    const shownEntries = $derived(groups.filter((group) => isSearching || openCategories[group.key]).flatMap((group) => group.entries))
     const currentEntry = $derived(shownEntries.find((entry) => getEntryKey(entry) === selectedKey) ?? shownEntries[0])
     const currentMarkdown = $derived(currentEntry && findMarkdown(currentEntry.namespace, currentEntry.name))
 
@@ -57,21 +59,36 @@
 
     onMount(() => {
         fetch('/reference.json')
-            .then((response) => response.json())
+            .then((response) => {
+                if (!response.ok) {
+                    throw new Error('Failed to load reference')
+                }
+
+                return response.json()
+            })
             .then((found: ReferenceData) => {
                 entries = found.entries
                 links = found.links
                 openCategories = Object.fromEntries(createGroups(found.entries).map((group) => [group.key, openKinds.includes(group.kind)]))
             })
+            .catch(() => {})
     })
 </script>
 
 <div class="reference">
     <div class="index">
-            <input type="search" bind:value={search} placeholder="search"/>
+        <input type="search" bind:value={search} placeholder="search" aria-label="search reference" />
         <div class="lists">
             {#each groups as group (group.key)}
-                <details class={group.kind} bind:open={openCategories[group.key]}>
+                <details
+                    class={group.kind}
+                    open={isSearching || Boolean(openCategories[group.key])}
+                    ontoggle={(event) => {
+                        if (!isSearching) {
+                            openCategories[group.key] = event.currentTarget.open
+                        }
+                    }}
+                >
                     <summary>{group.category}</summary>
                     <ul>
                         {#each group.entries as entry (getEntryKey(entry))}
@@ -112,10 +129,8 @@
 
     input {
         width: 100%;
-        /*border: var(--border);*/
         height: var(--row-height);
         padding: 0 0.5em;
-
     }
 
     input:focus {
@@ -138,14 +153,13 @@
 
     details {
         color: var(--kind-color);
-
     }
 
     ul {
         margin-block-end: var(--gap);
     }
 
-    li > *{
+    li > * {
         padding: 0 0 0 0.5em;
     }
 

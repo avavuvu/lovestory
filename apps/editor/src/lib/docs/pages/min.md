@@ -9,7 +9,7 @@ category:
 ```lovechild
 $: noise(0.9)
   .color("yellow")
-  .min(color("lightgreen")
+  .min(color("lightgreen"))
 ```
 
 Below is an example of the max comparison for one pixel in an image.

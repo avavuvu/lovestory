@@ -7,5 +7,5 @@
 </script>
 
 <Hatnote>
-    Based on the Hydra function, <code><a {href}>{name}()</a></code>.
+    Based on the Hydra function, <code><a {href} target="_blank" rel="noreferrer">{name}()</a></code>.
 </Hatnote>

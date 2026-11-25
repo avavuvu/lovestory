@@ -3,6 +3,14 @@ import type { MediaElement, Renderer } from '@lovechild/webgl'
 import { getOrCreate } from '../maps'
 import type { ErrorReporter } from './errors'
 
+const releasedElements = new WeakSet<MediaElement>()
+
+const stopStream = (stream: MediaStream) => {
+    for (const track of stream.getTracks()) {
+        track.stop()
+    }
+}
+
 const createVideoElement = () => {
     const element = document.createElement('video')
     element.crossOrigin = 'anonymous'
@@ -13,8 +21,34 @@ const createVideoElement = () => {
 }
 
 const startCamera = async (element: HTMLVideoElement) => {
-    element.srcObject = await navigator.mediaDevices.getUserMedia({ video: true })
-    await element.play()
+    if (!navigator.mediaDevices?.getUserMedia) {
+        throw new Error('camera is not available in this browser')
+    }
+
+    const stream = await navigator.mediaDevices.getUserMedia({ video: true })
+
+    if (releasedElements.has(element)) {
+        stopStream(stream)
+        return
+    }
+
+    element.srcObject = stream
+
+    try {
+        await element.play()
+    } catch (error) {
+        stopStream(stream)
+        element.srcObject = null
+
+        if (!releasedElements.has(element)) {
+            throw error
+        }
+    }
+
+    if (releasedElements.has(element)) {
+        stopStream(stream)
+        element.srcObject = null
+    }
 }
 
 const createMediaElement = (input: MediaInput, errors: ErrorReporter): MediaElement => {
@@ -25,24 +59,39 @@ const createMediaElement = (input: MediaInput, errors: ErrorReporter): MediaElem
         case 'picture': {
             const element = document.createElement('img')
             element.crossOrigin = 'anonymous'
+            element.addEventListener('error', () => {
+                if (!releasedElements.has(element)) {
+                    errors.report(new Error(`could not load picture "${input.source}"`))
+                }
+            })
             element.src = input.source
             return element
         }
         case 'video': {
             const element = createVideoElement()
             element.src = input.source
-            element.play().catch((error: unknown) => errors.report(error))
+            element.play().catch((error: unknown) => {
+                if (!releasedElements.has(element)) {
+                    errors.report(error)
+                }
+            })
             return element
         }
         case 'camera': {
             const element = createVideoElement()
-            startCamera(element).catch((error: unknown) => errors.report(error))
+            startCamera(element).catch((error: unknown) => {
+                if (!releasedElements.has(element)) {
+                    errors.report(error)
+                }
+            })
             return element
         }
     }
 }
 
 const releaseMediaElement = (element: MediaElement) => {
+    releasedElements.add(element)
+
     if (element instanceof HTMLImageElement) {
         element.removeAttribute('src')
         return
@@ -55,9 +104,7 @@ const releaseMediaElement = (element: MediaElement) => {
     }
 
     if (element.srcObject instanceof MediaStream) {
-        for (const track of element.srcObject.getTracks()) {
-            track.stop()
-        }
+        stopStream(element.srcObject)
     }
 
     element.pause()

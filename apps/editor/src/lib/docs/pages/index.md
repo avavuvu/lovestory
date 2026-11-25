@@ -2,11 +2,12 @@
 aliases: [home]
 ---
 
-lovechild is an open source video synth
+lovestory is an open source video synth
 
 it is based on the live-coding platform [strudel](https://strudel.cc/),
-combining it with the video synth inspired [hydra](https://hydra.ojack.xyz/?).
+combining it with the video synth [hydra](https://hydra.ojack.xyz/).
 
+- [start here](/start-here)
 - [play](/code)
 - [examples](/examples)
 - [docs](/explore)

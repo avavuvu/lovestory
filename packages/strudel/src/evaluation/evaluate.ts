@@ -51,7 +51,7 @@ export const evaluateCode = (code: string, scope: Record<string, unknown>, input
     const prepared = prepareCode(code)
     const { output, miniLocations = [], widgets = [] } = transpiler(prepared.code, { wrapAsync: true })
     const current = createSceneBuilder(prepared, inputs)
-    const values = { ...scope, previous: current.readPrevious }
+    const values = { ...scope, previous: current.readPrevious, all: current.addAllTransform, each: current.addEachTransform, hush: current.hush }
     const execute = new Function('lookup', ...Object.keys(values), 'with (lookup) { return ' + output + ' }')
     currentScene = current
 

@@ -1,2 +1,2 @@
-export { createRenderer, type CompiledGraph, type Renderer } from './renderer'
+export { createRenderer, type CompiledGraph, type PixelInspection, type Renderer } from './renderer'
 export { markCanvasChanged, type MediaElement } from './media'

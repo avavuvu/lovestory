@@ -97,7 +97,7 @@ export const readLovechildDocs = (): ReadonlyArray<LovechildDoc> => {
     return [
         ...withoutMethodNames(createDocs(sources, () => 'source', findExportPath)),
         ...createDocs(media, () => 'media', findExportPath),
-        ...createDocs([['text', text], ...readMethods(TextImage.prototype)], () => 'text', findTextPath, (name) => name === 'text' ? undefined : 'TextImage'),
+        ...createDocs([['text', text], ...readMethods(TextImage.prototype).filter(([name]) => !(name in Image.prototype))], () => 'text', findTextPath, (name) => name === 'text' ? undefined : 'TextImage'),
         ...methods,
     ]
 }

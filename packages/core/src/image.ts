@@ -1,9 +1,23 @@
-import type { Amount, ColorName, CombineName, CoordinateName, Keyword, Operation, Paint, Parameter, Scalar, SourceName } from './operation'
-import { colorNames, combineNames, coordinateNames, createArguments, splitNames } from './steps'
+import type { Amount, ColorName, CombineName, CoordinateName, Keyword, Operation, Paint, Parameter, Pattern, Scalar, SourceName } from './operation'
+import { createArguments } from './steps'
 
 type Values = ReadonlyArray<Parameter | undefined>
 
-const isScalar = (value: unknown): value is Scalar => typeof value === 'number' || (typeof value === 'object' && value !== null && 'queryArc' in value)
+const isPattern = (value: unknown): value is Pattern => typeof value === 'object' && value !== null && 'queryArc' in value
+
+const isScalar = (value: unknown): value is Scalar => typeof value === 'number' || isPattern(value)
+
+const findPixelateSize = (operation: Operation): { width: Scalar, height: Scalar } | undefined => {
+    if (operation.kind === 'pixelate') {
+        return { width: operation.width, height: operation.height }
+    }
+
+    if ('input' in operation) {
+        return findPixelateSize(operation.input)
+    }
+
+    return undefined
+}
 
 export class Image {
     readonly operation: Operation
@@ -60,6 +74,14 @@ export class Image {
         return this.#transformCoordinate('kaleid', [sides])
     }
 
+    kaleidMove(push?: Amount, sides?: Amount) {
+        return this.#transformCoordinate('kaleidMove', [push, sides])
+    }
+
+    stretch() {
+        return this.#transformCoordinate('stretch', [])
+    }
+
     polar() {
         return this.#transformCoordinate('polar', [])
     }
@@ -74,6 +96,36 @@ export class Image {
 
     pixelateY(cells?: Amount) {
         return this.pixelate(0, cells)
+    }
+
+    pixelateTo(width?: Scalar, height?: Scalar) {
+        const columns = width ?? 8
+        return new Image({ kind: 'pixelate', input: this.operation, width: columns, height: height ?? columns, isInspected: false, hasAlpha: false })
+    }
+
+    inspectPixels(hasAlpha?: boolean) {
+        if (this.operation.kind === 'pixelate') {
+            return new Image({ ...this.operation, isInspected: true, hasAlpha: Boolean(hasAlpha) })
+        }
+
+        const size = findPixelateSize(this.operation)
+        return new Image({ kind: 'pixelate', input: this.operation, width: size?.width ?? 8, height: size?.height ?? 8, isInspected: true, hasAlpha: Boolean(hasAlpha) })
+    }
+
+    nearest() {
+        return this.#transformCoordinate('nearest', [])
+    }
+
+    nearestNeighbour() {
+        return this.nearest()
+    }
+
+    nearestNeighbor() {
+        return this.nearest()
+    }
+
+    crisp() {
+        return this.nearest()
     }
 
     repeat(x?: Amount, y?: Amount) {
@@ -128,6 +180,10 @@ export class Image {
         return this.#transformColor('posterize', [levels])
     }
 
+    posterise(levels?: Amount) {
+        return this.posterize(levels)
+    }
+
     abs() {
         return this.#transformColor('abs', [])
     }
@@ -140,8 +196,8 @@ export class Image {
         return this.#transformColor('smoothstep', [start, end])
     }
 
-    thresh(threshold?: Amount) {
-        return this.#transformColor('thresh', [threshold])
+    thresh(threshold?: Amount, tolerance?: Amount) {
+        return this.#transformColor('thresh', [threshold, tolerance])
     }
 
     opacity(amount?: Amount) {
@@ -165,7 +221,11 @@ export class Image {
     }
 
     split(x?: Amount, y?: Amount) {
-        return new Image({ kind: 'split', name: 'split', input: this.operation, parameters: createArguments('split', [x, y]) })
+        const amount = x ?? 0.02
+        const red = this.move(amount, y).mult(this.#createSource('solid', [1, 0, 0, 1]))
+        const green = this.mult(this.#createSource('solid', [0, 1, 0, 1]))
+        const blue = this.move(this.#negate(amount), y === undefined ? undefined : this.#negate(y)).mult(this.#createSource('solid', [0, 0, 1, 1]))
+        return red.add(green).add(blue)
     }
 
     splitX(amount?: Amount) {
@@ -176,81 +236,93 @@ export class Image {
         return this.split(0, amount)
     }
 
-    add(other: Image | Scalar) {
-        return this.#combineWith('add', this.#fillWith(other, 0), [])
+    add(other: Paint) {
+        return this.#combineWith('add', this.#toImage(other, 0), [])
     }
 
-    sub(other: Image | Scalar) {
-        return this.#combineWith('sub', this.#fillWith(other, 0), [])
+    sub(other: Paint) {
+        return this.#combineWith('sub', this.#toImage(other, 1), [])
     }
 
-    subtract(other: Image | Scalar) {
+    subtract(other: Paint) {
         return this.sub(other)
     }
 
-    mult(other: Image | Scalar) {
-        return this.#combineWith('mult', this.#fillWith(other, 1), [])
+    mult(other: Paint) {
+        return this.#combineWith('mult', this.#toImage(other, 1), [])
     }
 
-    multiply(other: Image | Scalar) {
+    color(red?: Paint, green?: Amount, blue?: Amount, alpha?: Amount) {
+        const isSingle = green === undefined && blue === undefined && alpha === undefined
+
+        if (isSingle && red !== undefined) {
+            return this.mult(this.#toImage(red, 1))
+        }
+
+        return this.mult(this.#createSource('solid', [red ?? 1, green ?? 1, blue ?? 1, alpha ?? 1]))
+    }
+
+    colour(red?: Paint, green?: Amount, blue?: Amount, alpha?: Amount) {
+        return this.color(red, green, blue, alpha)
+    }
+
+    multiply(other: Paint) {
         return this.mult(other)
     }
 
-    div(other: Image | Scalar) {
-        return this.#combineWith('div', this.#fillWith(other, 1), [])
+    div(other: Paint) {
+        return this.#combineWith('div', this.#toImage(other, 1), [])
     }
 
-    divide(other: Image | Scalar) {
+    divide(other: Paint) {
         return this.div(other)
     }
 
-    min(other: Image | Scalar) {
-        return this.#combineWith('min', this.#fillWith(other, 1), [])
+    min(other: Paint) {
+        return this.#combineWith('min', this.#toImage(other, 1), [])
     }
 
-    max(other: Image | Scalar) {
-        return this.#combineWith('max', this.#fillWith(other, 0), [])
+    max(other: Paint) {
+        return this.#combineWith('max', this.#toImage(other, 0), [])
     }
 
-    pow(other: Image | Scalar) {
-        return this.#combineWith('pow', this.#fillWith(other, 1), [])
+    pow(other: Paint) {
+        return this.#combineWith('pow', this.#toImage(other, 1), [])
     }
 
-    mod(other: Image | Scalar) {
-        return this.#combineWith('mod', this.#fillWith(other, 1), [])
+    mod(other: Paint) {
+        return this.#combineWith('mod', this.#toImage(other, 1), [])
     }
 
-    diff(other: Image) {
-        return this.#combineWith('diff', other, [])
+    diff(other: Paint) {
+        return this.#combineWith('diff', this.#toImage(other, 0), [])
     }
 
-    difference(other: Image) {
+    difference(other: Paint) {
         return this.diff(other)
     }
 
-    layer(other: Image) {
-        return this.#combineWith('layer', other, [])
+    layer(other: Paint) {
+        return this.#combineWith('layer', this.#toImage(other, 1), [])
     }
 
-    mask(other: Image) {
-        return this.#combineWith('mask', other, [])
+    mask(other: Paint) {
+        return this.#combineWith('mask', this.#toImage(other, 1), [])
     }
 
-    screen(other: Image) {
-        return this.#combineWith('screen', other, [])
+    screen(other: Paint) {
+        return this.#combineWith('screen', this.#toImage(other, 1), [])
     }
 
     key(color?: Paint, tolerance?: Amount) {
-        const paint = color ?? '#00ff00'
-        const other = isImage(paint) ? paint : this.#createSource('paint', [paint, paint, paint, paint])
-        return this.#combineWith('key', other, [tolerance])
+        return this.#combineWith('key', this.#toImage(color ?? '#00ff00', 1), [tolerance])
     }
 
-    blend(other: Image, amount?: Amount) {
-        return this.#combineWith('blend', other, [amount])
+    blend(other: Paint, amount?: Amount) {
+        return this.#combineWith('blend', this.#toImage(other, 1), [amount])
     }
 
-    mix(other: Image, amount?: Amount) {
+    mix(other: Paint, amount?: Amount) {
         return this.blend(other, amount)
     }
 
@@ -312,12 +384,29 @@ export class Image {
         return new Image({ kind: 'color', name, input: this.operation, parameters: createArguments(name, values) })
     }
 
+    #negate(amount: Amount) {
+        return typeof amount === 'number' ? -amount : this.#fillWith(amount, 1).mult(-1)
+    }
+
     #fillWith(value: Image | Scalar, alpha: number) {
         if (!isScalar(value)) {
             return value
         }
 
-        return new Image({ kind: 'source', name: 'solid', parameters: createArguments('solid', [value, value, value, alpha]) })
+        return this.#createSource('solid', [value, value, value, alpha])
+    }
+
+    #toImage(value: Paint, alpha: number): Image {
+        if (typeof value === 'number') {
+            return this.#createSource('solid', [value, value, value, alpha])
+        }
+
+        if (typeof value === 'string' || isPattern(value)) {
+            const painted = this.#createSource('paint', [value, value, value, value])
+            return alpha === 0 ? painted.opacity(0) : painted
+        }
+
+        return value
     }
 
     #combineWith(name: CombineName, other: Image, values: Values) {
@@ -333,12 +422,6 @@ export const isImage = (value: unknown): value is Image => value instanceof Imag
 
 export const selectImage = (selector: Parameter, options: ReadonlyArray<Image>) => {
     return new Image({ kind: 'select', options: options.map((option) => option.operation), parameters: [selector] })
-}
-
-for (const name of [...coordinateNames, ...colorNames, ...combineNames, ...splitNames]) {
-    if (!(name in Image.prototype)) {
-        throw new Error(`${name} has a definition but no method`)
-    }
 }
 
 const createSwizzleNames = (letters: string) => {

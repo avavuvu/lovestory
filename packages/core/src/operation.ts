@@ -3,7 +3,6 @@ import type { colors } from './steps/colors'
 import type { combines } from './steps/combines'
 import type { coordinates } from './steps/coordinates'
 import type { sources } from './steps/sources'
-import type { splits } from './steps/splits'
 
 export interface Pattern {
     queryArc: (begin: number, end: number) => ReadonlyArray<{ readonly value: unknown }>
@@ -31,9 +30,7 @@ export type ColorName = keyof typeof colors
 
 export type CombineName = keyof typeof combines
 
-export type SplitName = keyof typeof splits
-
-export type OperationName = SourceName | CoordinateName | ColorName | CombineName | SplitName
+export type OperationName = SourceName | CoordinateName | ColorName | CombineName
 
 export type MediaName = 'camera' | 'video' | 'picture'
 
@@ -49,7 +46,6 @@ export type Operation =
     | { kind: 'coordinate', name: CoordinateName, input: Operation, parameters: ReadonlyArray<Argument> }
     | { kind: 'color', name: ColorName, input: Operation, parameters: ReadonlyArray<Argument> }
     | { kind: 'combine', name: CombineName, input: Operation, other: Operation, parameters: ReadonlyArray<Argument> }
-    | { kind: 'split', name: SplitName, input: Operation, parameters: ReadonlyArray<Argument> }
     | { kind: 'swizzle', input: Operation, channels: string }
     | { kind: 'select', options: ReadonlyArray<Operation>, parameters: ReadonlyArray<Argument> }
     | { kind: 'media', name: MediaName, source: string }
@@ -57,12 +53,15 @@ export type Operation =
     | { kind: 'previous', imageName?: string }
     | { kind: 'feedback', input: Operation }
     | { kind: 'capture', input: Operation, gate: Operation }
+    | { kind: 'pixelate', input: Operation, width: Scalar, height: Scalar, isInspected: boolean, hasAlpha: boolean }
 
 export type Step = Extract<Operation, { name: OperationName }>
 
 export type Feedback = Extract<Operation, { kind: 'feedback' }>
 
 export type Capture = Extract<Operation, { kind: 'capture' }>
+
+export type Pixelate = Extract<Operation, { kind: 'pixelate' }>
 
 export type Media = Extract<Operation, { kind: 'media' }>
 

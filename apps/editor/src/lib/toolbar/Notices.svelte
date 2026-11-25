@@ -7,7 +7,7 @@
     } = $props()
 </script>
 
-<div class="notices" class:open={notices.length > 0} bind:clientHeight={height}>
+<div class="notices" class:open={notices.length > 0} role="status" aria-live="polite" bind:clientHeight={height}>
     <ul>
         {#each notices as notice, index (index)}
             <li class={notice.kind}>
@@ -60,6 +60,7 @@
     button {
         width: 100%;
         text-align: left;
+        text-decoration: underline;
         color: inherit;
         cursor: pointer;
     }

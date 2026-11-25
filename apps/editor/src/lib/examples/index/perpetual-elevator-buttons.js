@@ -1,10 +1,3 @@
-// licensed with CC BY-NC-SA 4.0 https://creativecommons.org/licenses/by-nc-sa/4.0/
-// Perpetual elevator buttons
-// By Khoparzi
-// http://khoparzi.com
-//
-// ported from the original at https://hydra.ojack.xyz/?sketch_id=khoparzi_1
-
 let drift = saw.slow(6)
 
 let rainbow = rgb(
@@ -28,3 +21,10 @@ let $o1 = shape(3)
   .max(0)
 
 $: $o1.spin(0.03)
+
+// licensed with CC BY-NC-SA 4.0 https://creativecommons.org/licenses/by-nc-sa/4.0/
+// Perpetual elevator buttons
+// By Khoparzi
+// http://khoparzi.com
+//
+// ported from the original at https://hydra.ojack.xyz/?sketch_id=khoparzi_1

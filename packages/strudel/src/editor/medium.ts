@@ -5,10 +5,10 @@ import { patternFunctions } from '../language/patterns'
 
 export type Medium = 'image' | 'text' | 'sound' | 'neutral'
 
-const textFunction = 'text'
+const neutralFunctions: ReadonlySet<string> = new Set(['setcps', 'setCps', 'setcpm', 'setCpm', 'all', 'each', 'hush'])
 
 export const readFunctionMedium = (name: string): Medium | undefined => {
-    if (name === textFunction) {
+    if (name === 'text') {
         return 'text'
     }
 
@@ -20,7 +20,7 @@ export const readFunctionMedium = (name: string): Medium | undefined => {
         return 'sound'
     }
 
-    return name in strudel || name in patternFunctions ? 'neutral' : undefined
+    return name in strudel || name in patternFunctions || neutralFunctions.has(name) ? 'neutral' : undefined
 }
 
 export const readMethodMedium = (receiver: Medium | undefined, name: string): Medium | undefined => {

@@ -12,14 +12,18 @@ const defaultOutline = 0.5
 
 const defaultWrap = 0.5
 
+const emptyOperation: Operation = { kind: 'source', name: 'empty', parameters: [] }
+
 const toOperation = (paint: Paint): Operation => isImage(paint) ? paint.operation : createPaint(paint).operation
 
 export class TextImage extends Image {
     readonly parts: TextParts
+    readonly isHushed: boolean
 
-    constructor(parts: TextParts) {
-        super({ kind: 'text', ...parts })
+    constructor(parts: TextParts, isHushed = false) {
+        super(isHushed ? emptyOperation : { kind: 'text', ...parts })
         this.parts = parts
+        this.isHushed = isHushed
     }
 
     font(family: Keyword) {
@@ -43,12 +47,16 @@ export class TextImage extends Image {
         return this.#change({ settings: { ...this.parts.settings, wrap: width ?? defaultWrap } })
     }
 
+    hush() {
+        return new TextImage(this.parts, true)
+    }
+
     #change(parts: Partial<TextParts>) {
-        return new TextImage({ ...this.parts, ...parts })
+        return new TextImage({ ...this.parts, ...parts }, this.isHushed)
     }
 }
 
-export const textStyleNames: ReadonlyArray<string> = Object.getOwnPropertyNames(TextImage.prototype).filter((name) => name !== 'constructor')
+export const textStyleNames: ReadonlyArray<string> = Object.getOwnPropertyNames(TextImage.prototype).filter((name) => !(name in Image.prototype))
 
 const textStyles: ReadonlySet<string> = new Set(textStyleNames)
 

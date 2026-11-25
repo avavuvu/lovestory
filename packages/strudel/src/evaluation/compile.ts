@@ -27,9 +27,25 @@ export interface Compiled {
     warnings: WarningList
 }
 
+const readTempoValue = (value: unknown, name: string) => {
+    const raw = isPattern(value) ? value.queryArc(0, 0)[0]?.value : value
+    const number = Number(raw)
+
+    if (!Number.isFinite(number) || number <= 0) {
+        throw new Error(`${name} needs a positive number`)
+    }
+
+    return number
+}
+
 const createScope = ({ setCps, libraries = [], scope }: CompileOptions) => {
-    const setTempo = (cps: number) => {
-        setCps(cps)
+    const setTempo = (value: unknown) => {
+        setCps(readTempoValue(value, 'setcps'))
+        return silence
+    }
+
+    const setCpmTempo = (value: unknown) => {
+        setCps(readTempoValue(value, 'setcpm') / 60)
         return silence
     }
 
@@ -42,13 +58,31 @@ const createScope = ({ setCps, libraries = [], scope }: CompileOptions) => {
         ...patternFunctions,
         ...scope,
         setcps: setTempo,
-        setcpm: (cpm: number) => setTempo(cpm / 60),
+        setCps: setTempo,
+        setcpm: setCpmTempo,
+        setCpm: setCpmTempo,
     }
 }
 
 const layerImages = (onStage: ReadonlyArray<ImageOrPattern>) => {
     const images = onStage.filter(isImage)
     return images.length > 0 ? images.reduce((layered, next) => layered.layer(next)) : undefined
+}
+
+const buildSound = ({ onStage, allTransforms, eachTransforms }: EvaluatedScene) => {
+    const sounds = onStage.filter(isPattern)
+    const transformed = eachTransforms.reduce<ReadonlyArray<Pattern>>(
+        (patterns, transform) => patterns.map((pattern) => {
+            const next = transform(pattern)
+            return isPattern(next) ? next : silence
+        }),
+        sounds,
+    )
+    const stacked = transformed.length > 0 ? stack(...transformed) : silence
+    return allTransforms.reduce<Pattern>((pattern, transform) => {
+        const next = transform(pattern)
+        return isPattern(next) ? next : silence
+    }, stacked)
 }
 
 const createGraph = ({ onStage, imagePreviews, imagesAndPatternsByName }: EvaluatedScene) => {
@@ -62,9 +96,15 @@ const createGraph = ({ onStage, imagePreviews, imagesAndPatternsByName }: Evalua
 }
 
 export const compileCode = async (code: string, options: CompileOptions): Promise<Compiled> => {
-    const evaluation = await evaluateCode(code, createScope(options), options.inputs)
+    let pendingCps: number | undefined
+    const evaluation = await evaluateCode(code, createScope({ ...options, setCps: (cps) => { pendingCps = cps } }), options.inputs)
     const warnings = createWarningList(evaluation.sketch, options.onWarning)
-    const sounds = evaluation.onStage.filter(isPattern)
+    const sound = buildSound(evaluation)
+    const graph = createGraph(evaluation)
+
+    if (pendingCps !== undefined) {
+        options.setCps(pendingCps)
+    }
 
     for (const { details, place } of evaluation.reports) {
         warnings.add(details, place)
@@ -72,8 +112,8 @@ export const compileCode = async (code: string, options: CompileOptions): Promis
 
     return {
         evaluation,
-        graph: createGraph(evaluation),
-        sound: sounds.length > 0 ? stack(...sounds) : silence,
+        graph,
+        sound,
         warnings,
     }
 }

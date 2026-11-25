@@ -30,8 +30,6 @@ interface Found {
     medium: Medium | undefined
 }
 
-const trackMethod = 'track'
-
 const passes = 2
 
 const lookUp = (scope: Scope | undefined, name: string): Found | undefined => {
@@ -165,7 +163,7 @@ const analyse = (state: EditorState): Mediums => {
         const { receiverMedium, medium, name } = visitMember(callee, scope)
         visitArguments(list, scope, receiverMedium)
 
-        if (name === trackMethod) {
+        if (name === 'track') {
             recordTrack(list, receiverMedium)
         }
 

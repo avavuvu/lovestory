@@ -3,16 +3,16 @@ title: coming from hydra
 category: concept
 ---
 
-While **[[Hydra]]** was the inspiration for Lovechild, there are many small differences between the two. This article will go through some of the most important.
+While **[[Hydra]]** was the inspiration for Lovestory, there are many small differences between the two. This article will go through some of the most important.
 
 ## Outputs, sources, and feedback
-The biggest difference between Hydra and Lovechild is the way sources are defined. Hydra defines the output buffers `o0`, `o1`, `o2`, `o3` for you, and to display one on the screen you call `render(o1)`.
+The biggest difference between Hydra and Lovestory is the way sources are defined. Hydra defines the output buffers `o0`, `o1`, `o2`, `o3` for you, and to display one on the screen you call `render(o1)`.
 
 ```hydra
 osc().out()
 ```
 
-For Lovechild, everything placed after a dollar sign label will be output to a screen. This means that outputs can have any name, as long as it starts with `$`.
+For Lovestory, everything placed after a dollar sign label will be output to a screen. This means that outputs can have any name, as long as it starts with `$`.
 
 ```lovechild
 $: osc().rotate(0.1)
@@ -35,7 +35,7 @@ solid(1, 1, 1).layer(
 ).out(o0)
 ```
 
-Here, `o0` is read by `src(o0)` on line 2 and line 3. Then, the changes are fed back into `o0` with `.out(o0)`. To do something similar with Lovechild, you can use the [[previous()]] function, which will read the last frame of the current block.
+Here, `o0` is read by `src(o0)` on line 2 and line 3. Then, the changes are fed back into `o0` with `.out(o0)`. To do something similar with Lovestory, you can use the [[previous()]] function, which will read the last frame of the current block.
 
 ```lovechild
 $: solid(1, 1, 1).layer(previous()
@@ -71,7 +71,7 @@ For those familiar with JavaScript (or most programming languages), this might l
 To make values change in Hydra, you define them in an array. That functionality has been replaced by [[Strudel]]'s [[patterns]]. Patterns are defined by [[mini notation]], which is a deep topic in itself, but in its simplest form, works just like arrays except defined by [[double quotes]] (`"`).
 
 ```hydra
-osc([3, 4, 5].fast(0.5).out()
+osc([3, 4, 5].fast(0.5)).out()
 ```
 
 ```lovechild
@@ -80,7 +80,7 @@ $: osc("3 4 5".fast(0.5))
 
 
 ## No modulate
-There is no `modulate()` method, in fact, there is no `modulateRotate()`, `modulateScale()` or anything of the sort. To achieve the same things with Lovechild, you can just use the respective plain functions, [[move()]], [[rotate()]], and [[scale()]].
+There is no `modulate()` method, in fact, there is no `modulateRotate()`, `modulateScale()` or anything of the sort. To achieve the same things with Lovestory, you can just use the respective plain functions, [[move()]], [[rotate()]], and [[scale()]].
 
 ```lovechild
 $: osc(6.4).move(osc(1.6).mult(-0.1))
@@ -91,13 +91,13 @@ This is because those functions can take either a number *or* an image. At each 
 While `modulate()` has been removed, there are corresponding functions for Hydra's `modulateHue()` and `modulateKaleid()`. They have been renamed [[chromaMove()]] and [[kaleidMove()]] respectively.
 
 ## Number of arguments
-Many of the methods in Hydra take two or three arguments, which might only have one or two with Lovechild. For example Hydra's `osc()` function asks for the number of oscillations, a scroll speed, and an RGB shift.
+Many of the methods in Hydra take two or three arguments, which might only have one or two with Lovestory. For example Hydra's `osc()` function asks for the number of oscillations, a scroll speed, and an RGB shift.
 
 ```hydra
 osc(40, 0.1, 1).out()
 ```
 
-The same effect is replicated with Lovechild by chaining methods.
+The same effect is replicated with Lovestory by chaining methods.
 
 ```lovechild
 $: osc(6.4, saw.fast(1.3)).splitX(0.025)
@@ -110,7 +110,7 @@ To make a value change over time in Hydra, you use an [[arrow function]] that pl
 osc(40, 0).colorama(() => Math.sin(time) * 0.1).out()
 ```
 
-With Lovechild, use the in-built [[sine]] signal instead. It is important to note that Hydra's sine wave goes from -1 to 1, whereas the default `sine` with Lovechild goes from 0 to 1. To replicate Hydra, use [[sine2]].
+With Lovestory, use the in-built [[sine]] signal instead. It is important to note that Hydra's sine wave goes from -1 to 1, whereas the default `sine` with Lovestory goes from 0 to 1. To replicate Hydra, use [[sine2]].
 
 ```lovechild
 $: osc(6.4).colorama(sine2.mul(0.1).slow(3.14))
@@ -123,14 +123,14 @@ In Hydra, angles are defined in radians. A radian is defined based on Pi (π), s
 osc(40).rotate(3.14 / 2).out()
 ```
 
-With Lovechild, angles are defined by turns, so a quarter rotation is equal to 1/4, or 0.25; a half rotation is 1/2, or 0.5; and so on.
+With Lovestory, angles are defined by turns, so a quarter rotation is equal to 1/4, or 0.25; a half rotation is 1/2, or 0.5; and so on.
 
 ```lovechild
 $: osc(6.4).rotate(0.25)
 ```
 
 ## Stretch
-In Hydra, coordinates are based on the screen's width and height. A four sided shape defined with `shape(4)` will look rectangular on a rectangular display. With Lovechild a `shape(4)` will look like a square.
+In Hydra, coordinates are based on the screen's width and height. A four sided shape defined with `shape(4)` will look rectangular on a rectangular display. With Lovestory a `shape(4)` will look like a square.
 
 ```hydra
 shape(4).out()

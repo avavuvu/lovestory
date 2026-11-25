@@ -7,7 +7,7 @@
 
     let { page }: { page: string } = $props()
 
-    const namespaceNames: Record<Namespace, string> = { lovechild: 'lovechild', strudel: 'Strudel' }
+    const namespaceNames: Record<Namespace, string> = { lovechild: 'lovestory', strudel: 'Strudel' }
 
     const context = getDocsContext()
     const target = $derived((context?.links ?? current.data.links)?.[page])

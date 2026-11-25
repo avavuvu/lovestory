@@ -1,4 +1,5 @@
 <script lang="ts">
+    import type { Pattern } from '@strudel/core'
     import { createPatternHistory, rowOpacities, type Cell, type Table } from './pattern-history'
     import type { PatternSource } from './pattern-previews.svelte'
 
@@ -6,7 +7,8 @@
 
     const history = createPatternHistory()
     let table: Table | undefined = $state.raw(undefined)
-    let lastTime = 0
+    let lastTime: number | undefined
+    let lastPattern: Pattern | undefined
 
     $effect(() => {
         const pattern = source.patterns.get(id)
@@ -16,8 +18,13 @@
             return
         }
 
-        const from = Math.min(lastTime, time)
+        if (time === 0 && lastTime !== undefined && lastTime > 0 && pattern === lastPattern) {
+            return
+        }
+
+        const from = lastTime === undefined ? time : Math.min(lastTime, time)
         lastTime = time
+        lastPattern = pattern
 
         try {
             table = history.update(pattern, from, time)

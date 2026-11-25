@@ -2,8 +2,6 @@ import type { Helper } from '../glsl/helpers'
 
 export type Shape = 'scalar' | 'xy' | 'rgb' | 'rgba'
 
-export type StepKind = 'source' | 'coordinate' | 'color' | 'combine' | 'split'
-
 export interface ParameterDefinition {
     name: string
     default?: number | string

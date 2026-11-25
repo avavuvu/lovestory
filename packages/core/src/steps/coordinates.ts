@@ -16,7 +16,8 @@ vec2 rotate(vec2 coordinate, float turns) {
         neutral: [1, 1],
         glsl: `
 vec2 scale(vec2 coordinate, vec2 amount) {
-    return (coordinate - 0.5) / amount + 0.5;
+    vec2 safe = vec2(abs(amount.x) < 0.0001 ? 0.0001 : amount.x, abs(amount.y) < 0.0001 ? 0.0001 : amount.y);
+    return (coordinate - 0.5) / safe + 0.5;
 }`,
     },
     move: {
@@ -52,9 +53,28 @@ vec2 spin(vec2 coordinate, float speed) {
         glsl: `
 vec2 kaleid(vec2 coordinate, float sides) {
     vec2 point = coordinate - 0.5;
-    float segment = TAU / sides;
+    float segment = TAU / max(abs(sides), 0.0001);
     float angle = abs(mod(atan(point.y, point.x), segment) - segment / 2.0);
     return length(point) * vec2(cos(angle), sin(angle)) + 0.5;
+}`,
+    },
+    kaleidMove: {
+        parameters: [{ name: 'push', default: 0.1 }, { name: 'sides', default: 4 }],
+        shapes: ['scalar', 'scalar'],
+        glsl: `
+vec2 kaleidMove(vec2 coordinate, float push, float sides) {
+    vec2 point = coordinate - 0.5;
+    float segment = TAU / max(abs(sides), 0.0001);
+    float angle = abs(mod(atan(point.y, point.x), segment) - segment / 2.0);
+    return (length(point) + push) * vec2(cos(angle), sin(angle)) + 0.5;
+}`,
+    },
+    stretch: {
+        parameters: [],
+        shapes: [],
+        glsl: `
+vec2 stretch(vec2 coordinate) {
+    return (coordinate - 0.5) * min(areaSize.x, areaSize.y) / areaSize + 0.5;
 }`,
     },
     polar: {
@@ -64,6 +84,16 @@ vec2 kaleid(vec2 coordinate, float sides) {
 vec2 polar(vec2 coordinate) {
     vec2 point = coordinate - 0.5;
     return vec2(atan(point.y, point.x) / TAU + 0.5, length(point));
+}`,
+    },
+    nearest: {
+        parameters: [],
+        shapes: [],
+        glsl: `
+vec2 nearest(vec2 coordinate) {
+    float unit = min(bufferResolution.x, bufferResolution.y);
+    vec2 texel = (coordinate - 0.5) * unit + 0.5 * bufferResolution;
+    return (floor(texel) + 0.5 - 0.5 * bufferResolution) / unit + 0.5;
 }`,
     },
     pixelate: {

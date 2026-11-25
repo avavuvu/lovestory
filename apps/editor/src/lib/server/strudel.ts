@@ -26,6 +26,7 @@ const parameterPattern = /^(?:\{((?:[^{}]|\{[^{}]*\})*)\}\s+)?(\S+)\s*-?\s*([\s\
 const hiddenTags = ['private', 'ignore', 'noAutocomplete']
 const untagged = 'untagged'
 const ignoredTags = ['superdough']
+const includedPackages = ['core', 'mini', 'tonal', 'webaudio', 'draw', 'superdough']
 const excludedFolders = /(^|\/)(node_modules|dist|shift-parser|shift-reducer|shift-traverser)\//
 
 const namePatterns = [
@@ -37,15 +38,25 @@ const namePatterns = [
 
 const strudelFolder = dirname(dirname(createRequire(import.meta.url).resolve('@strudel/core/package.json')))
 
+const readPackageSources = (packageName: string) => {
+    const folder = join(strudelFolder, packageName)
+
+    if (!existsSync(folder)) {
+        return []
+    }
+
+    return readdirSync(folder, { recursive: true, encoding: 'utf8' })
+        .filter((file) => file.endsWith('.mjs') && !excludedFolders.test(file))
+        .sort()
+        .map((file) => readFileSync(join(folder, file), 'utf8'))
+}
+
 const readSources = () => {
     if (!existsSync(strudelFolder)) {
         throw new Error('Strudel sources are missing, run bun run setup')
     }
 
-    return readdirSync(strudelFolder, { recursive: true, encoding: 'utf8' })
-        .filter((file) => file.endsWith('.mjs') && !excludedFolders.test(file))
-        .sort()
-        .map((file) => readFileSync(join(strudelFolder, file), 'utf8'))
+    return includedPackages.flatMap(readPackageSources)
 }
 
 const cleanComment = (body: string) => body.split('\n').map((line) => line.replace(/^\s*\* ?/, '')).join('\n')

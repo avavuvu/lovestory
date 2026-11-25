@@ -1,6 +1,8 @@
+import type { Medium } from '@lovechild/strudel/editor'
+
 export type Namespace = 'lovechild' | 'strudel'
 
-export type Kind = 'image' | 'text' | 'neutral' | 'sound'
+export type Kind = Medium
 
 export interface EntryParameter {
     name: string

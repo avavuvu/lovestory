@@ -1,4 +1,6 @@
 declare module '@strudel/core' {
+    import type { SelectionName } from './language/selections'
+
     export interface Fraction {
         lt: (other: Fraction) => boolean
         gt: (other: Fraction) => boolean
@@ -35,8 +37,6 @@ declare module '@strudel/core' {
 
     export type PatternTransform = (pattern: Pattern) => Pattern
 
-    export type SelectionName = 'sometimes' | 'sometimesBy' | 'often' | 'rarely' | 'almostNever' | 'almostAlways' | 'always' | 'never' | 'someCycles' | 'someCyclesBy' | 'firstOf' | 'every' | 'lastOf' | 'when' | 'chunk' | 'chunkBack'
-
     export type SelectionArgument = number | string | Pattern | PatternTransform
 
     export type HitLength = number | string | Pattern
@@ -72,6 +72,7 @@ declare module '@strudel/core' {
 
     export const setTime: (getTime: () => number) => void
     export const setClockTime: (getClockTime: () => number) => void
+    export const setCpsFunc: (getCps: () => number) => void
     export const isPattern: (value: unknown) => value is Pattern
     export const isControlName: (name: string) => boolean
     export const reify: <Value>(value: Value | Pattern<Value>) => Pattern<Value>

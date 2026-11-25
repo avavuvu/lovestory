@@ -11,15 +11,16 @@ vec4 osc(vec2 coordinate, float frequency, float phase) {
 }`,
     },
     shape: {
-        parameters: [{ name: 'sides', default: 3 }],
-        shapes: ['scalar'],
+        parameters: [{ name: 'sides', default: 3 }, { name: 'softness', default: 0.01 }],
+        shapes: ['scalar', 'scalar'],
         glsl: `
-vec4 shape(vec2 coordinate, float sides) {
+vec4 shape(vec2 coordinate, float sides, float softness) {
     vec2 point = coordinate * 2.0 - 1.0;
     float angle = atan(point.x, point.y) + TAU / 2.0;
-    float segment = TAU / sides;
+    float safeSides = abs(sides) < 0.0001 ? 0.0001 : sides;
+    float segment = TAU / safeSides;
     float edge = cos(floor(0.5 + angle / segment) * segment - angle) * length(point);
-    return vec4(vec3(1.0 - smoothstep(1.0, 1.01, edge)), 1.0);
+    return vec4(vec3(1.0 - smoothstep(1.0, 1.0 + max(softness, 0.0001), edge)), 1.0);
 }`,
     },
     solid: {

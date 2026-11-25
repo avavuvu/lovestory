@@ -70,9 +70,9 @@
             <pre><code>{code}</code></pre>
         {/if}
         {#if isHydra}
-            <a class="action" href={hydraUrl} target="_blank" rel="noreferrer">↗</a>
+            <a class="action" href={hydraUrl} target="_blank" rel="noreferrer" aria-label="open in hydra" title="open in hydra">↗&#xFE0F;</a>
         {:else}
-            <button class="action" type="button" onclick={toggle}>{isPlaying ? '■' : '▶'}</button>
+            <button class="action" type="button" onclick={toggle} aria-label={isPlaying ? 'stop example' : 'play example'} title={isPlaying ? 'stop' : 'play'}>{isPlaying ? '⏹\uFE0F' : '▶\uFE0F'}</button>
         {/if}
     </figure>
 {:else}
@@ -112,9 +112,22 @@
         right: 0;
         width: 32px;
         height: var(--row-height);
+        font-family: var(--font-emoji), var(--font-body);
+        font-size: 1rem;
+        line-height: 1;
+        font-variant-emoji: emoji;
         background: var(--color-background);
         color: var(--color-foreground);
         text-decoration: none;
         cursor: pointer;
+    }
+
+    .action:hover {
+        background: var(--color-selection);
+    }
+
+    .action:focus-visible {
+        outline: 2px solid var(--color-primary);
+        outline-offset: -2px;
     }
 </style>

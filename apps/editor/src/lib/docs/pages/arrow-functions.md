@@ -8,7 +8,7 @@ category: concept
 
 **Arrow functions** are part of JavaScript, and are useful to know for creating more advanced sketches or reducing the amount of code you need to write.
 
-```lovechild
+```js
 let arrowFunction = (/* the inputs */) => /* the output */ {}
 ```
 
@@ -35,7 +35,7 @@ $: osc(3)
 Arrow functions also appear in [[pattern]] code. Here, `x` represents the oscillator [[image]] [[when]] a `hh` is being played. You can't use `.layer()`, or any image method, without an image to call it on, so `x` stands in for that image. `x` is just a convention popularised in [[Strudel]], it can be named anything.
 
 ## Non-arrow-functions
-You can also define a function with the older non-arrow-function, by using the `function` keyword. While there are some differences between the two, for Lovechild, the difference doesn't matter. You could write the above code with it as—while cumbersome—it will still work.
+You can also define a function with the older non-arrow-function, by using the `function` keyword. While there are some differences between the two, for Lovestory, the difference doesn't matter. You could write the above code with it as—while cumbersome—it will still work.
 ```lovechild
 $hats: s("hh - hh -")
 

@@ -99,12 +99,6 @@ export const createVocabulary = (entries: ReadonlyArray<Entry>): Vocabulary => {
     const words = Array.from(concepts.keys()).sort((a, b) => b.length - a.length).map(escapePattern)
     const findFunction = createFinder(entries.filter((entry) => !isConcept(entry)), false)
 
-    for (const name of Object.entries(proseLinks).flatMap(([source, linked]) => [source, ...linked])) {
-        if (!findFunction(name, 'strudel')) {
-            throw new Error(`${name} in prose-links.ts is not a Strudel function`)
-        }
-    }
-
     return {
         findEntry: createFinder(entries, true),
         findFunction,

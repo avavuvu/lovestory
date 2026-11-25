@@ -6,11 +6,24 @@
     import type { Notice } from '../messages'
     import Toolbar from './Toolbar.svelte'
 
-    let { infoHref, notices = [], onPlay, onStop, search = $bindable(''), focus = $bindable() }: {
+    let {
+        infoHref,
+        isMuted = false,
+        notices = [],
+        onPlay,
+        onStop,
+        onToggleMute,
+        onShuffle,
+        search = $bindable(''),
+        focus = $bindable(),
+    }: {
         infoHref: string
+        isMuted?: boolean
         notices?: ReadonlyArray<Notice>
         onPlay: () => void
         onStop: () => void
+        onToggleMute: () => void
+        onShuffle: () => void
         search?: string
         focus?: string
     } = $props()
@@ -54,10 +67,13 @@
 </script>
 
 {#snippet field()}
-    <input type="search" placeholder="search" bind:value={search} oninput={() => activeIndex = 0} onkeydown={handleKey} />
+    <div class="leading">
+        <a href="/" class="home" aria-label="home" title="home">🏠</a>
+        <input type="search" placeholder="search" aria-label="search documentation" bind:value={search} oninput={() => activeIndex = 0} onkeydown={handleKey} />
+    </div>
 {/snippet}
 
-<Toolbar isGraphSelected {infoHref} {notices} {onPlay} {onStop} start={field}>
+<Toolbar isGraphSelected {infoHref} {isMuted} {notices} {onPlay} {onStop} {onToggleMute} {onShuffle} start={field}>
     {#if results.length > 0}
         <ul bind:this={list}>
             {#each results as { node, alias }, index (node.key)}
@@ -75,6 +91,35 @@
 </Toolbar>
 
 <style>
+    .leading {
+        display: flex;
+        flex: 1;
+        min-width: 0;
+    }
+
+    .home {
+        display: grid;
+        place-items: center;
+        min-width: 32px;
+        height: 100%;
+        font-family: var(--font-emoji), var(--font-body);
+        font-size: 1rem;
+        line-height: 1;
+        font-variant-emoji: emoji;
+        background: var(--color-background);
+        color: var(--color-foreground);
+        text-decoration: none;
+    }
+
+    .home:hover {
+        background: var(--color-selection);
+    }
+
+    .home:focus-visible {
+        outline: 2px solid var(--color-primary);
+        outline-offset: -2px;
+    }
+
     input {
         flex: 1;
         min-width: 0;
@@ -85,6 +130,7 @@
 
     input:focus {
         outline: none;
+        box-shadow: inset 0 0 0 1px var(--color-primary);
     }
 
     ul {
@@ -93,7 +139,7 @@
         border-top: var(--border);
     }
 
-    a {
+    ul a {
         display: block;
         padding: 0 var(--gap);
         line-height: var(--row-height);
@@ -105,9 +151,16 @@
         color: var(--color-muted);
     }
 
-    a.active,
-    a:focus-visible {
+    ul a.active,
+    ul a:focus-visible {
         background: var(--color-foreground);
+        color: var(--color-background);
         outline: none;
+    }
+
+    ul a.active .alias,
+    ul a:focus-visible .alias {
+        color: var(--color-background);
+        opacity: 0.75;
     }
 </style>

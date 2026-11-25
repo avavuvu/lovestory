@@ -1,9 +1,3 @@
-// licensed with CC BY-NC-SA 4.0 https://creativecommons.org/licenses/by-nc-sa/4.0/
-//Glitch River
-//Flor de Fuego
-//https://flordefuego.github.io/
-// ported from the Hydra original at https://hydra.ojack.xyz
-
 let cells = voronoi(8, 1 / 31.4)
   .preview()
 
@@ -27,3 +21,9 @@ $: cells
   .luma(0.3)
 
 $: s("ace_perc")
+
+// licensed with CC BY-NC-SA 4.0 https://creativecommons.org/licenses/by-nc-sa/4.0/
+//Glitch River
+//Flor de Fuego
+//https://flordefuego.github.io/
+// ported from the Hydra original at https://hydra.ojack.xyz

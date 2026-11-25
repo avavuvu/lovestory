@@ -6,7 +6,7 @@ let bg = (seed) => solid(1, 0.2, 0.9).diff(
       .mul(0.1)
       .add(seed)
   )
-    .thresh()
+    .thresh(0.4)
     .sub(solid(0, 0, 1))
 ).luma(0.01)
 

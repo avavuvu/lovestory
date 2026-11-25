@@ -1,5 +1,5 @@
 import { hasFreePrevious, isEmptyLoop, isImage, type Image } from '@lovechild/core'
-import { silence, type Pattern } from '@strudel/core'
+import { silence, type Pattern, type PatternTransform } from '@strudel/core'
 import { closeLoopIfImage, createNames, getImagesByName, getBlockName, isMuted, isName, isImageOrPattern, switchOff, type Named, type ImageOrPattern } from './names'
 import type { Prepared } from './prepare'
 import { reportWarning } from './warnings'
@@ -19,6 +19,8 @@ export interface Scene {
     imagesAndPatternsByName: ReadonlyMap<string, ImageOrPattern>
     imagePreviews: ReadonlyArray<ImagePreview>
     patternPreviews: ReadonlyArray<PatternPreview>
+    allTransforms: ReadonlyArray<PatternTransform>
+    eachTransforms: ReadonlyArray<PatternTransform>
 }
 
 interface Block extends Named {
@@ -32,6 +34,9 @@ export interface SceneBuilder {
     giveNameToImageOrPattern: (label: unknown, imageOrPattern: ImageOrPattern) => ImageOrPattern
     addImagePreview: (id: string, image: Image) => void
     addPatternPreview: (id: string, pattern: Pattern) => void
+    addAllTransform: (transform: unknown) => Pattern
+    addEachTransform: (transform: unknown) => Pattern
+    hush: () => Pattern
     build: (result: unknown) => Scene
 }
 
@@ -61,6 +66,8 @@ export const createSceneBuilder = (prepared: Prepared, inputs: ReadonlyMap<strin
     const blocks: Array<Block> = []
     const imagePreviews: Array<ImagePreview> = []
     const patternPreviews: Array<PatternPreview> = []
+    const allTransforms: Array<PatternTransform> = []
+    const eachTransforms: Array<PatternTransform> = []
 
     const addBlock = (label: string, imageOrPattern: ImageOrPattern) => {
         const name = getBlockName(label)
@@ -91,6 +98,31 @@ export const createSceneBuilder = (prepared: Prepared, inputs: ReadonlyMap<strin
         return named
     }
 
+    const addAllTransform = (transform: unknown) => {
+        if (typeof transform !== 'function') {
+            throw new Error('all needs a function')
+        }
+
+        allTransforms.push(transform as PatternTransform)
+        return silence
+    }
+
+    const addEachTransform = (transform: unknown) => {
+        if (typeof transform !== 'function') {
+            throw new Error('each needs a function')
+        }
+
+        eachTransforms.push(transform as PatternTransform)
+        return silence
+    }
+
+    const hush = () => {
+        blocks.length = 0
+        allTransforms.length = 0
+        eachTransforms.length = 0
+        return silence
+    }
+
     const build = (result: unknown) => {
         const visible = blocks.filter((block) => !block.isOff)
         const checked = visible.length > 0 ? visible : [result].filter(isImageOrPattern).map((imageOrPattern) => ({ name: anonymousName, imageOrPattern: closeLoopIfImage(imageOrPattern) }))
@@ -101,6 +133,8 @@ export const createSceneBuilder = (prepared: Prepared, inputs: ReadonlyMap<strin
             imagesAndPatternsByName: registry.defined,
             imagePreviews,
             patternPreviews,
+            allTransforms,
+            eachTransforms,
         }
     }
 
@@ -111,6 +145,9 @@ export const createSceneBuilder = (prepared: Prepared, inputs: ReadonlyMap<strin
         giveNameToImageOrPattern,
         addImagePreview: (id, image) => imagePreviews.push({ id, image }),
         addPatternPreview: (id, pattern) => patternPreviews.push({ id, pattern }),
+        addAllTransform,
+        addEachTransform,
+        hush,
         build,
     }
 }

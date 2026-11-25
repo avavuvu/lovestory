@@ -16,6 +16,7 @@ export interface ExamplePlayer {
     readonly code: string | undefined
     play: (example: Example) => Promise<EvaluationResult | undefined>
     stop: () => void
+    openInEditor: (code: string) => void
 }
 
 const key = Symbol('example player')

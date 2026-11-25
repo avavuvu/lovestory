@@ -30,7 +30,8 @@ vec4 mult(vec4 color, vec4 other) {
         shapes: [],
         glsl: `
 vec4 div(vec4 color, vec4 other) {
-    return vec4(color.rgb / other.rgb, color.a);
+    vec3 isSafe = step(0.0001, abs(other.rgb));
+    return vec4(isSafe * (color.rgb / mix(vec3(1.0), other.rgb, isSafe)), color.a);
 }`,
     },
     min: {
@@ -57,7 +58,10 @@ vec4 maxStep(vec4 color, vec4 other) {
         functionName: 'powStep',
         glsl: `
 vec4 powStep(vec4 color, vec4 other) {
-    return vec4(pow(max(color.rgb, 0.0), other.rgb), color.a);
+    vec3 base = max(color.rgb, 0.0);
+    vec3 isInvalid = (1.0 - step(0.000001, base)) * (1.0 - step(0.000001, other.rgb));
+    vec3 safeBase = mix(base, vec3(1.0), isInvalid);
+    return vec4(mix(pow(safeBase, other.rgb), vec3(0.0), isInvalid), color.a);
 }`,
     },
     mod: {
@@ -66,7 +70,8 @@ vec4 powStep(vec4 color, vec4 other) {
         functionName: 'modStep',
         glsl: `
 vec4 modStep(vec4 color, vec4 other) {
-    return vec4(mod(color.rgb, other.rgb), color.a);
+    vec3 isSafe = step(0.0001, abs(other.rgb));
+    return vec4(isSafe * mod(color.rgb, mix(vec3(1.0), other.rgb, isSafe)), color.a);
 }`,
     },
     diff: {
@@ -117,7 +122,9 @@ vec4 blend(vec4 color, vec4 other, float amount) {
         shapes: [],
         glsl: `
 vec4 screen(vec4 color, vec4 other) {
-    return 1.0 - (1.0 - color) * (1.0 - other);
+    vec4 first = clamp(color, 0.0, 1.0);
+    vec4 second = clamp(other, 0.0, 1.0);
+    return 1.0 - (1.0 - first) * (1.0 - second);
 }`,
     },
 } satisfies Record<string, Definition>

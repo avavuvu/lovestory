@@ -1,10 +1,3 @@
-// licensed with CC BY-NC-SA 4.0 https://creativecommons.org/licenses/by-nc-sa/4.0/
-//Pixelscape
-//Marianne Teixido
-//https://github.com/MarianneTeixido
-//
-// ported from original ay https://hydra.ojack.xyz/?sketch_id=marianne_1
-
 let $noise = noise(1, 0.2)
   .mult(2)
   .sub(1)
@@ -37,3 +30,10 @@ $o0: previous($o0)
       .luma()
       .mult(gradient().saturate(0.9))
   )
+
+// licensed with CC BY-NC-SA 4.0 https://creativecommons.org/licenses/by-nc-sa/4.0/
+//Pixelscape
+//Marianne Teixido
+//https://github.com/MarianneTeixido
+//
+// ported from original at https://hydra.ojack.xyz/?sketch_id=marianne_1

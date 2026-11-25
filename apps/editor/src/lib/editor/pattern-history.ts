@@ -20,6 +20,8 @@ const rest = Symbol('rest')
 
 const historyLength = 16
 
+const maximumQueryCycles = 4
+
 export const rowOpacities = [1, 0.6, 0.4, 0.25]
 
 const valueKey = ''
@@ -35,7 +37,7 @@ const formatNumber = (value: number) => {
     return value.toFixed(size >= 100 ? 0 : size >= 10 ? 1 : 2)
 }
 
-const formatValue = (value: unknown): string => {
+const formatValue = (value: unknown, seen = new WeakSet<object>()): string => {
     if (value === rest) {
         return '~'
     }
@@ -44,12 +46,18 @@ const formatValue = (value: unknown): string => {
         return formatNumber(value)
     }
 
-    if (Array.isArray(value)) {
-        return value.map(formatValue).join(':')
-    }
-
     if (typeof value === 'object' && value !== null) {
-        return Object.entries(value).map(([key, field]) => `${key}: ${formatValue(field)}`).join(' ')
+        if (seen.has(value)) {
+            return '[...]'
+        }
+
+        seen.add(value)
+
+        if (Array.isArray(value)) {
+            return value.map((item) => formatValue(item, seen)).join(':')
+        }
+
+        return Object.entries(value).map(([key, field]) => `${key}: ${formatValue(field, seen)}`).join(' ')
     }
 
     return String(value)
@@ -163,9 +171,10 @@ export const createPatternHistory = (): PatternHistory => {
         }
 
         lastTime = to
+        const queryFrom = Math.max(from, to - maximumQueryCycles)
         const active = pattern.queryArc(to, to)
 
-        for (const moment of groupOnsets(pattern.queryArc(from, to), from, to)) {
+        for (const moment of groupOnsets(pattern.queryArc(queryFrom, to), queryFrom, to)) {
             remember(moment)
         }
 
@@ -225,7 +234,7 @@ export const createPatternHistory = (): PatternHistory => {
     }
 
     const describeValues = (): Rows => {
-        if (isChanging(history.flat().map(formatValue))) {
+        if (isChanging(history.flat().map((value) => formatValue(value)))) {
             changingKeys.add(valueKey)
         }
 

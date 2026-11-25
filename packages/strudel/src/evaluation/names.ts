@@ -38,7 +38,7 @@ export const createNames = (inputs: ReadonlyMap<string, ImageOrPattern>) => {
 
         const later = new Proxy({}, {
             get: () => {
-                throw new Error(`${name} is not defined`)
+                throw new Error(`${name} is not defined yet, use previous(${name}) to read its last frame`)
             },
         })
 

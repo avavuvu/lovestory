@@ -1,5 +1,5 @@
 import { Image, isImage, selectImage } from '@lovechild/core'
-import { isPattern, pure, reify, stack, type Pattern, type PatternTransform, type SelectionName } from '@strudel/core'
+import { isPattern, pure, reify, stack, type Pattern, type PatternTransform } from '@strudel/core'
 import { fillGaps } from './signals'
 
 type Transform = (image: Image) => Image
@@ -8,7 +8,7 @@ type SelectionValue = number | string | Pattern | Transform
 
 type DegradeAmount = number | string | Pattern
 
-const selectionNames: ReadonlyArray<SelectionName> = [
+const selectionNames = [
     'sometimes',
     'sometimesBy',
     'often',
@@ -25,7 +25,9 @@ const selectionNames: ReadonlyArray<SelectionName> = [
     'when',
     'chunk',
     'chunkBack',
-]
+] as const
+
+export type SelectionName = typeof selectionNames[number]
 
 const conditionNames: ReadonlyArray<SelectionName> = ['when', 'sometimesBy', 'someCyclesBy']
 
